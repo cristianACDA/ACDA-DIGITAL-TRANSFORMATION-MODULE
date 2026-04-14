@@ -1,13 +1,14 @@
-// C3-T1: AI Readiness Score per use case.
+// C3-T1 + C3-T2: AI Readiness Score per use case + Risk Map + Adoption Path.
 // 4 criterii derivate din indicatori ACDA, editabile manual, status semafor.
-// C3-T2 (Risk Map + Adoption Path) — placeholder în josul paginii.
+// Scatter risc×impact cu tooltip + secvenţa de adopţie quick-wins → scalare.
 
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useProjectContext } from '../../context/ProjectContext'
 import { mockCTDOutput } from '../../mocks/mock-cloudserve'
 import { exportAIReadinessPDF } from '../../services/export/AIReadinessPDF'
-import type { AIReadinessUseCase } from '../../services/export/AIReadinessPDF'
+import type { AIReadinessUseCase, AdoptionStep } from '../../services/export/AIReadinessPDF'
+import { renderRiskMap, type RiskPoint } from '../../components/charts/riskMapCanvas'
 
 type CriteriaKey = 'date' | 'infra' | 'skills' | 'reg'
 type Scores = Record<CriteriaKey, number>
@@ -66,6 +67,7 @@ function average(scores: Scores): number {
 export default function AIReadiness() {
   const { maturityIndicators, client, activeProjectId } = useProjectContext()
   const [exporting, setExporting] = useState(false)
+  const [hovered, setHovered] = useState<string | null>(null)
 
   // Overrides per use case (manual edit).
   const [overrides, setOverrides] = useState<Record<string, Partial<Scores>>>({})
@@ -82,6 +84,11 @@ export default function AIReadiness() {
     const candidates = mockCTDOutput.oportunitati.filter(
       (o) => o.tip === 'AI' || o.tip === 'automatizare',
     )
+    const impacts = candidates.map((o) => o.impact_ebit_estimat ?? 0)
+    const maxImpact = Math.max(1, ...impacts)
+    const minImpact = Math.min(...impacts, 0)
+    const rangeImpact = Math.max(1, maxImpact - minImpact)
+
     const rows = candidates.map((o) => {
       const ov = overrides[o.titlu] ?? {}
       const scores: Scores = {
@@ -92,10 +99,15 @@ export default function AIReadiness() {
       }
       const global = average(scores)
       const status = statusOf(global)
+      const risc = o.risc ?? 3
+      const impactNorm = 1 + ((o.impact_ebit_estimat ?? 0) - minImpact) / rangeImpact * 4
       return {
         titlu: o.titlu,
         tip: o.tip,
         efort: o.efort,
+        impactEbit: o.impact_ebit_estimat ?? 0,
+        risc,
+        impactNorm,
         scores,
         global,
         status,
@@ -105,6 +117,45 @@ export default function AIReadiness() {
     rows.sort((a, b) => b.global - a.global)
     return rows
   }, [baseScores, overrides])
+
+  const { adoptionPath, scqaps } = useMemo(() => {
+    // Compozit: readiness mare + risc mic = quick win. score = global - risc*0.5
+    const scored = useCases.map((u) => ({ u, composite: u.global - u.risc * 0.5 }))
+    const quickWins = scored.filter((s) => s.u.risc <= 2 && s.u.global >= 3.5).map((s) => s.u)
+    const notReady = useCases.filter((u) => u.status.key === 'not')
+    const pickedQW = new Set(quickWins.map((u) => u.titlu))
+    const pickedNR = new Set(notReady.map((u) => u.titlu))
+    const midRange = useCases.filter((u) => !pickedQW.has(u.titlu) && !pickedNR.has(u.titlu))
+
+    const steps: AdoptionStep[] = []
+    quickWins.forEach((u) => steps.push({
+      pas: 1, titlu: 'Quick wins (low risk · high readiness)',
+      useCaseTitlu: u.titlu, readiness: u.global, risc: u.risc,
+      timeline: 'Luna 1-3',
+      prerequisite: 'Sponsor executiv + echipă mixtă IT/business definită',
+    }))
+    midRange.forEach((u) => steps.push({
+      pas: 2, titlu: 'Risc mediu · readiness mediu',
+      useCaseTitlu: u.titlu, readiness: u.global, risc: u.risc,
+      timeline: 'Luna 4-7',
+      prerequisite: u.actiuni[0] ?? 'Consolidare rezultate Pas 1 + governance AI activă',
+    }))
+    notReady.forEach((u) => steps.push({
+      pas: 3, titlu: 'Risc ridicat sau readiness scăzut',
+      useCaseTitlu: u.titlu, readiness: u.global, risc: u.risc,
+      timeline: 'Luna 8-12',
+      prerequisite: u.actiuni[0] ?? 'Remediere criterii sub prag + pilot validat',
+    }))
+
+    const scqaps = `Situaţie: Compania are ${useCases.length} use case-uri AI identificate. ` +
+      `Complicaţie: ${notReady.length} nu sunt pregătite pentru implementare (criterii sub pragul minim). ` +
+      `Întrebare: În ce ordine le implementăm pentru a capta valoare fără a escalada riscul? ` +
+      `Răspuns: Începem cu ${quickWins.length || 'primul'} quick-win${quickWins.length === 1 ? '' : 's'} în Luna 1-3 — use case-uri low-risk cu readiness ≥3.5 — care finanţează şi legitimează fazele următoare. ` +
+      `Propunere: rulăm secvenţa pe 12 luni cu poarta de decizie după Pasul 1. ` +
+      `Salvgardare: niciun use case Pas 2 sau 3 nu porneşte fără ROI confirmat pe Pas 1 şi governance trustworthy-AI activă.`
+
+    return { adoptionPath: steps, scqaps }
+  }, [useCases])
 
   const setOverride = (titlu: string, key: CriteriaKey, value: number) => {
     setOverrides((prev) => ({
@@ -132,9 +183,19 @@ export default function AIReadiness() {
         criterii: { date: u.scores.date, infra: u.scores.infra, skills: u.scores.skills, reg: u.scores.reg },
         actiuni: u.actiuni,
       }))
+      const riskPoints: RiskPoint[] = useCases.map((u) => ({
+        label: u.titlu,
+        probability: u.risc,
+        impact: u.impactNorm,
+        riskLevel: u.risc <= 2 ? 'low' : u.risc === 3 ? 'med' : 'high',
+      }))
+      const riskMapPng = renderRiskMap(riskPoints)
       await exportAIReadinessPDF({
         clientName: client?.company_name ?? mockCTDOutput.denumire,
         useCases: payload,
+        riskMapPng,
+        adoptionPath,
+        scqaps,
       })
     } finally {
       setExporting(false)
@@ -259,18 +320,147 @@ export default function AIReadiness() {
         })}
       </section>
 
-      {/* C3-T2 placeholder */}
-      <section className="border-2 border-dashed border-[#E6E6E6] rounded-xl p-6 text-center bg-[#F6F9FC]">
-        <p className="text-xs font-bold uppercase tracking-widest text-[#0A2540]/50 mb-1">Următor: C3-T2</p>
-        <h2 className="text-base font-bold text-[#071F80]">Risk Map + Adoption Path</h2>
-        <p className="text-sm text-[#0A2540]/60 mt-1">
-          Harta riscurilor AI (probabilitate × impact) + parcursul de adopţie pilot → scalare.
-        </p>
+      {/* Risk Map */}
+      <section className="flex flex-col gap-3">
+        <h2 className="text-lg font-black text-[#071F80]">Risk Map — probabilitate × impact</h2>
+        <div className="bg-white border border-[#E6E6E6] rounded-xl p-4">
+          <RiskMapSVG useCases={useCases} hovered={hovered} setHovered={setHovered} />
+          <p className="text-xs text-[#0A2540]/60 mt-2 leading-relaxed">
+            Culori: <span className="text-green-700 font-semibold">verde</span> = risc ≤2 · {' '}
+            <span className="text-amber-700 font-semibold">galben</span> = risc 3 · {' '}
+            <span className="text-red-700 font-semibold">roşu</span> = risc ≥4.
+            Hover pe un punct pentru detalii.
+          </p>
+        </div>
+      </section>
+
+      {/* Adoption Path */}
+      <section className="flex flex-col gap-3">
+        <h2 className="text-lg font-black text-[#071F80]">Safe Adoption Path</h2>
+        <div className="bg-[#F6F9FC] border border-[#E6E6E6] rounded-xl p-4 text-sm text-[#0A2540] leading-relaxed">
+          <p className="italic">{scqaps}</p>
+        </div>
+        <ol className="flex flex-col gap-3">
+          {[1, 2, 3].map((p) => {
+            const steps = adoptionPath.filter((s) => s.pas === p)
+            if (steps.length === 0) return null
+            const stepMeta = {
+              1: { label: 'Pas 1 · Quick wins', chip: 'bg-green-600',  timeline: 'Luna 1-3' },
+              2: { label: 'Pas 2 · Consolidare', chip: 'bg-amber-500', timeline: 'Luna 4-7' },
+              3: { label: 'Pas 3 · Extindere',   chip: 'bg-[#071F80]', timeline: 'Luna 8-12' },
+            }[p as 1 | 2 | 3]
+            return (
+              <li key={p} className="bg-white border border-[#E6E6E6] rounded-xl overflow-hidden">
+                <div className="flex items-center gap-3 px-4 py-3 border-b border-[#E6E6E6] bg-[#F6F9FC]">
+                  <span className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded text-white ${stepMeta.chip}`}>
+                    {stepMeta.label}
+                  </span>
+                  <span className="text-xs text-[#0A2540]/60">{stepMeta.timeline}</span>
+                  <span className="text-xs text-[#0A2540]/40">· {steps.length} use case(s)</span>
+                </div>
+                <ul className="divide-y divide-[#E6E6E6]">
+                  {steps.map((s) => (
+                    <li key={s.useCaseTitlu} className="px-4 py-3">
+                      <div className="flex items-center justify-between gap-3 mb-1">
+                        <h3 className="text-sm font-bold text-[#071F80]">{s.useCaseTitlu}</h3>
+                        <div className="flex items-center gap-3 text-xs text-[#0A2540]/70 tabular-nums">
+                          <span>readiness <strong>{s.readiness.toFixed(1)}</strong></span>
+                          <span>risc <strong>{s.risc.toFixed(1)}</strong></span>
+                        </div>
+                      </div>
+                      <p className="text-xs text-[#0A2540]/70"><strong>Prerequisite:</strong> {s.prerequisite}</p>
+                    </li>
+                  ))}
+                </ul>
+              </li>
+            )
+          })}
+        </ol>
       </section>
 
       <div className="text-center text-xs text-[#0A2540]/50 border-t border-[#E6E6E6] pt-4">
         ACDA Consulting · Confidenţial
       </div>
+    </div>
+  )
+}
+
+// ─── Risk Map SVG ────────────────────────────────────────────────────────────
+
+interface RiskMapProps {
+  useCases: {
+    titlu: string
+    risc: number
+    impactNorm: number
+    impactEbit: number
+    global: number
+  }[]
+  hovered: string | null
+  setHovered: (v: string | null) => void
+}
+
+function RiskMapSVG({ useCases, hovered, setHovered }: RiskMapProps) {
+  const W = 720, H = 440
+  const padL = 60, padR = 20, padT = 24, padB = 50
+  const plotW = W - padL - padR
+  const plotH = H - padT - padB
+  const xScale = (v: number) => padL + (plotW * (Math.max(1, Math.min(5, v)) - 1)) / 4
+  const yScale = (v: number) => padT + plotH - (plotH * (Math.max(1, Math.min(5, v)) - 1)) / 4
+  const midX = padL + plotW / 2
+  const midY = padT + plotH / 2
+  const colorFor = (risc: number) =>
+    risc <= 2 ? '#0E7A3C' : risc === 3 ? '#DAA520' : '#C0392B'
+  const hover = useCases.find((u) => u.titlu === hovered)
+
+  return (
+    <div className="relative">
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" role="img" aria-label="Risk Map">
+        <rect x={padL}  y={padT} width={plotW / 2} height={plotH / 2} fill="#E8F5E9" />
+        <rect x={midX}  y={padT} width={plotW / 2} height={plotH / 2} fill="#FDECEA" />
+        <rect x={padL}  y={midY} width={plotW / 2} height={plotH / 2} fill="#F6F9FC" />
+        <rect x={midX}  y={midY} width={plotW / 2} height={plotH / 2} fill="#FFF4E5" />
+        {[1, 2, 3, 4, 5].map((i) => (
+          <g key={`gx${i}`}>
+            <line x1={xScale(i)} y1={padT} x2={xScale(i)} y2={padT + plotH} stroke="#D0D7DE" strokeDasharray="2 3" />
+            <text x={xScale(i)} y={padT + plotH + 14} fontSize="11" textAnchor="middle" fill="#0A2540">{i}</text>
+          </g>
+        ))}
+        {[1, 2, 3, 4, 5].map((i) => (
+          <g key={`gy${i}`}>
+            <line x1={padL} y1={yScale(i)} x2={padL + plotW} y2={yScale(i)} stroke="#D0D7DE" strokeDasharray="2 3" />
+            <text x={padL - 6} y={yScale(i) + 4} fontSize="11" textAnchor="end" fill="#0A2540">{i}</text>
+          </g>
+        ))}
+        <text x={padL + plotW / 4} y={padT + 14} fontSize="11" fontWeight="700" textAnchor="middle" fill="#0A2540">SWEET SPOT</text>
+        <text x={midX + plotW / 4} y={padT + 14} fontSize="11" fontWeight="700" textAnchor="middle" fill="#0A2540">ATENŢIE</text>
+        <text x={padL + plotW / 4} y={padT + plotH - 6} fontSize="10" textAnchor="middle" fill="#0A2540" opacity="0.6">Low impact — deprioritizat</text>
+        <text x={midX + plotW / 4} y={padT + plotH - 6} fontSize="10" fontWeight="700" textAnchor="middle" fill="#C0392B">EVITĂ</text>
+        <text x={padL + plotW / 2} y={H - 8} fontSize="12" fontWeight="700" textAnchor="middle" fill="#071F80">Probabilitate risc →</text>
+        <text x={16} y={padT + plotH / 2} fontSize="12" fontWeight="700" textAnchor="middle" fill="#071F80"
+          transform={`rotate(-90 16 ${padT + plotH / 2})`}>Impact EBIT →</text>
+        {useCases.map((u) => {
+          const cx = xScale(u.risc)
+          const cy = yScale(u.impactNorm)
+          const isHovered = hovered === u.titlu
+          return (
+            <g key={u.titlu} onMouseEnter={() => setHovered(u.titlu)} onMouseLeave={() => setHovered(null)}
+               style={{ cursor: 'pointer' }}>
+              <circle cx={cx} cy={cy} r={isHovered ? 10 : 7} fill={colorFor(u.risc)} stroke="#FFFFFF" strokeWidth="2" />
+              <text x={cx + 12} y={cy + 4} fontSize="10" fill="#0A2540">
+                {u.titlu.length > 28 ? u.titlu.slice(0, 27) + '…' : u.titlu}
+              </text>
+            </g>
+          )
+        })}
+      </svg>
+      {hover && (
+        <div className="absolute top-2 right-2 bg-white border border-[#E6E6E6] rounded-lg shadow-lg px-3 py-2 text-xs max-w-[280px] pointer-events-none">
+          <p className="font-bold text-[#071F80] leading-snug mb-1">{hover.titlu}</p>
+          <p className="text-[#0A2540]/70">Risc: <strong>{hover.risc.toFixed(1)}/5</strong></p>
+          <p className="text-[#0A2540]/70">Impact EBIT: <strong>{hover.impactEbit.toLocaleString('ro-RO')} RON</strong></p>
+          <p className="text-[#0A2540]/70">AI Readiness: <strong>{hover.global.toFixed(1)}/5</strong></p>
+        </div>
+      )}
     </div>
   )
 }

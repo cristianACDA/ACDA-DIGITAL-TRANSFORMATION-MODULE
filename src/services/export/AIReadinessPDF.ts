@@ -26,9 +26,23 @@ export interface AIReadinessUseCase {
   actiuni: string[]
 }
 
+export interface AdoptionStep {
+  pas: number
+  titlu: string
+  useCaseTitlu: string
+  readiness: number
+  risc: number
+  timeline: string
+  prerequisite: string
+}
+
 export interface AIReadinessPDFInput {
   clientName: string
   useCases: AIReadinessUseCase[]
+  /** dataURL PNG pentru Risk Map (opţional — dacă lipseşte, secţiunea se omite). */
+  riskMapPng?: string
+  adoptionPath?: AdoptionStep[]
+  scqaps?: string
 }
 
 export async function exportAIReadinessPDF(input: AIReadinessPDFInput): Promise<void> {
@@ -97,6 +111,51 @@ export async function exportAIReadinessPDF(input: AIReadinessPDFInput): Promise<
       y += 2
     }
     y += 3
+  }
+
+  // Risk Map
+  if (input.riskMapPng) {
+    doc.addPage()
+    doc.setFillColor(...ACDA_BLUE); doc.rect(0, 0, pageW, 14, 'F')
+    doc.setTextColor(255, 255, 255); doc.setFont('helvetica', 'bold'); doc.setFontSize(10)
+    doc.text('ACDA', 14, 9)
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(9)
+    doc.text(`AI Readiness · ${input.clientName}`, pageW - 14, 9, { align: 'right' })
+    doc.setTextColor(...ACDA_BLUE); doc.setFont('helvetica', 'bold'); doc.setFontSize(16)
+    doc.text('Risk Map — probabilitate × impact', 14, 28)
+    const imgW = pageW - 28
+    const imgH = imgW * (540 / 720)
+    doc.addImage(input.riskMapPng, 'PNG', 14, 34, imgW, imgH)
+    if (input.scqaps) {
+      doc.setTextColor(...TEXT); doc.setFont('helvetica', 'italic'); doc.setFontSize(10)
+      const lines = doc.splitTextToSize(input.scqaps, pageW - 28) as string[]
+      let ny = 34 + imgH + 6
+      for (const line of lines) { doc.text(line, 14, ny); ny += 4.8 }
+    }
+  }
+
+  // Adoption Path
+  if (input.adoptionPath && input.adoptionPath.length > 0) {
+    doc.addPage()
+    doc.setFillColor(...ACDA_BLUE); doc.rect(0, 0, pageW, 14, 'F')
+    doc.setTextColor(255, 255, 255); doc.setFont('helvetica', 'bold'); doc.setFontSize(10)
+    doc.text('ACDA', 14, 9)
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(9)
+    doc.text(`AI Readiness · ${input.clientName}`, pageW - 14, 9, { align: 'right' })
+    doc.setTextColor(...ACDA_BLUE); doc.setFont('helvetica', 'bold'); doc.setFontSize(16)
+    doc.text('Safe Adoption Path', 14, 28)
+    autoTable(doc, {
+      startY: 34,
+      margin: { left: 14, right: 14 },
+      head: [['Pas', 'Use case', 'Readiness', 'Risc', 'Timeline', 'Prerequisite']],
+      body: input.adoptionPath.map((s) => [
+        `Pas ${s.pas}`, s.useCaseTitlu, s.readiness.toFixed(1),
+        s.risc.toFixed(1), s.timeline, s.prerequisite,
+      ]),
+      styles: { fontSize: 9, textColor: TEXT, cellPadding: 2.5 },
+      headStyles: { fillColor: ACDA_BLUE, textColor: 255 },
+      columnStyles: { 0: { cellWidth: 16 }, 5: { cellWidth: 55 } },
+    })
   }
 
   const slug = input.clientName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
