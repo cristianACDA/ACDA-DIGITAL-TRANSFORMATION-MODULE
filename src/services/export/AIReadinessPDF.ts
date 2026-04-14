@@ -2,6 +2,7 @@
 
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
+import { registerRoboto } from './fonts/registerRoboto'
 
 const ACDA_BLUE: [number, number, number] = [27, 58, 92]
 const TEXT: [number, number, number] = [10, 37, 64]
@@ -47,19 +48,20 @@ export interface AIReadinessPDFInput {
 
 export async function exportAIReadinessPDF(input: AIReadinessPDFInput): Promise<void> {
   const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' })
+  registerRoboto(doc)
   const pageW = doc.internal.pageSize.getWidth()
 
   // Header band
   doc.setFillColor(...ACDA_BLUE); doc.rect(0, 0, pageW, 14, 'F')
-  doc.setTextColor(255, 255, 255); doc.setFont('helvetica', 'bold'); doc.setFontSize(10)
+  doc.setTextColor(255, 255, 255); doc.setFont('Roboto', 'bold'); doc.setFontSize(10)
   doc.text('ACDA', 14, 9)
-  doc.setFont('helvetica', 'normal'); doc.setFontSize(9)
+  doc.setFont('Roboto', 'normal'); doc.setFontSize(9)
   doc.text(`AI Readiness · ${input.clientName}`, pageW - 14, 9, { align: 'right' })
 
   // Title
-  doc.setTextColor(...ACDA_BLUE); doc.setFont('helvetica', 'bold'); doc.setFontSize(18)
+  doc.setTextColor(...ACDA_BLUE); doc.setFont('Roboto', 'bold'); doc.setFontSize(18)
   doc.text('AI Readiness Score per Use Case', 14, 28)
-  doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...TEXT)
+  doc.setFont('Roboto', 'normal'); doc.setFontSize(9); doc.setTextColor(...TEXT)
   doc.text(new Date().toLocaleDateString('ro-RO', { day: '2-digit', month: 'long', year: 'numeric' }), 14, 34)
 
   // Tabel scurt
@@ -76,8 +78,8 @@ export async function exportAIReadinessPDF(input: AIReadinessPDFInput): Promise<
       u.global.toFixed(1),
       u.statusLabel,
     ]),
-    styles: { fontSize: 9, textColor: TEXT },
-    headStyles: { fillColor: ACDA_BLUE, textColor: 255 },
+    styles: { font: 'Roboto', fontSize: 9, textColor: TEXT },
+    headStyles: { font: 'Roboto', fontStyle: 'bold', fillColor: ACDA_BLUE, textColor: 255 },
     didParseCell: (data) => {
       if (data.section === 'body' && data.column.index === 6) {
         const uc = input.useCases[data.row.index]
@@ -95,9 +97,9 @@ export async function exportAIReadinessPDF(input: AIReadinessPDFInput): Promise<
   // Detalii per use case cu acţiuni
   for (const uc of input.useCases) {
     if (y > 260) { doc.addPage(); y = 20 }
-    doc.setTextColor(...ACDA_BLUE); doc.setFont('helvetica', 'bold'); doc.setFontSize(12)
+    doc.setTextColor(...ACDA_BLUE); doc.setFont('Roboto', 'bold'); doc.setFontSize(12)
     doc.text(`${uc.titlu}  ·  ${uc.global.toFixed(1)}/5  ·  ${uc.statusLabel}`, 14, y); y += 6
-    doc.setTextColor(...TEXT); doc.setFont('helvetica', 'normal'); doc.setFontSize(9)
+    doc.setTextColor(...TEXT); doc.setFont('Roboto', 'normal'); doc.setFontSize(9)
     if (uc.actiuni.length === 0) {
       doc.text('Nu sunt acţiuni blocante — criteriile sunt peste pragul minim.', 14, y); y += 6
     } else {
@@ -117,17 +119,17 @@ export async function exportAIReadinessPDF(input: AIReadinessPDFInput): Promise<
   if (input.riskMapPng) {
     doc.addPage()
     doc.setFillColor(...ACDA_BLUE); doc.rect(0, 0, pageW, 14, 'F')
-    doc.setTextColor(255, 255, 255); doc.setFont('helvetica', 'bold'); doc.setFontSize(10)
+    doc.setTextColor(255, 255, 255); doc.setFont('Roboto', 'bold'); doc.setFontSize(10)
     doc.text('ACDA', 14, 9)
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(9)
+    doc.setFont('Roboto', 'normal'); doc.setFontSize(9)
     doc.text(`AI Readiness · ${input.clientName}`, pageW - 14, 9, { align: 'right' })
-    doc.setTextColor(...ACDA_BLUE); doc.setFont('helvetica', 'bold'); doc.setFontSize(16)
+    doc.setTextColor(...ACDA_BLUE); doc.setFont('Roboto', 'bold'); doc.setFontSize(16)
     doc.text('Risk Map — probabilitate × impact', 14, 28)
     const imgW = pageW - 28
     const imgH = imgW * (540 / 720)
     doc.addImage(input.riskMapPng, 'PNG', 14, 34, imgW, imgH)
     if (input.scqaps) {
-      doc.setTextColor(...TEXT); doc.setFont('helvetica', 'italic'); doc.setFontSize(10)
+      doc.setTextColor(...TEXT); doc.setFont('Roboto', 'italic'); doc.setFontSize(10)
       const lines = doc.splitTextToSize(input.scqaps, pageW - 28) as string[]
       let ny = 34 + imgH + 6
       for (const line of lines) { doc.text(line, 14, ny); ny += 4.8 }
@@ -138,11 +140,11 @@ export async function exportAIReadinessPDF(input: AIReadinessPDFInput): Promise<
   if (input.adoptionPath && input.adoptionPath.length > 0) {
     doc.addPage()
     doc.setFillColor(...ACDA_BLUE); doc.rect(0, 0, pageW, 14, 'F')
-    doc.setTextColor(255, 255, 255); doc.setFont('helvetica', 'bold'); doc.setFontSize(10)
+    doc.setTextColor(255, 255, 255); doc.setFont('Roboto', 'bold'); doc.setFontSize(10)
     doc.text('ACDA', 14, 9)
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(9)
+    doc.setFont('Roboto', 'normal'); doc.setFontSize(9)
     doc.text(`AI Readiness · ${input.clientName}`, pageW - 14, 9, { align: 'right' })
-    doc.setTextColor(...ACDA_BLUE); doc.setFont('helvetica', 'bold'); doc.setFontSize(16)
+    doc.setTextColor(...ACDA_BLUE); doc.setFont('Roboto', 'bold'); doc.setFontSize(16)
     doc.text('Safe Adoption Path', 14, 28)
     autoTable(doc, {
       startY: 34,
@@ -152,8 +154,8 @@ export async function exportAIReadinessPDF(input: AIReadinessPDFInput): Promise<
         `Pas ${s.pas}`, s.useCaseTitlu, s.readiness.toFixed(1),
         s.risc.toFixed(1), s.timeline, s.prerequisite,
       ]),
-      styles: { fontSize: 9, textColor: TEXT, cellPadding: 2.5 },
-      headStyles: { fillColor: ACDA_BLUE, textColor: 255 },
+      styles: { font: 'Roboto', fontSize: 9, textColor: TEXT, cellPadding: 2.5 },
+      headStyles: { font: 'Roboto', fontStyle: 'bold', fillColor: ACDA_BLUE, textColor: 255 },
       columnStyles: { 0: { cellWidth: 16 }, 5: { cellWidth: 55 } },
     })
   }

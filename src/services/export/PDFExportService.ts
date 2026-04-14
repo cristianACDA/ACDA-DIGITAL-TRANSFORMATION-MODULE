@@ -4,6 +4,7 @@
 
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
+import { registerRoboto } from './fonts/registerRoboto'
 import type {
   Client,
   Project,
@@ -57,10 +58,10 @@ function addHeader(doc: jsPDF, clientName: string) {
   doc.setFillColor(...ACDA_BLUE)
   doc.rect(0, 0, pageW, 14, 'F')
   doc.setTextColor(255, 255, 255)
-  doc.setFont('helvetica', 'bold')
+  doc.setFont('Roboto', 'bold')
   doc.setFontSize(10)
   doc.text('ACDA', 12, 9)
-  doc.setFont('helvetica', 'normal')
+  doc.setFont('Roboto', 'normal')
   doc.setFontSize(8.5)
   const title = `Raport Transformare Digitală · ${clientName}`
   doc.text(title, pageW - 12, 9, { align: 'right' })
@@ -72,7 +73,7 @@ function addFooter(doc: jsPDF, pageNum: number, totalPages: number) {
   doc.setDrawColor(220)
   doc.line(12, pageH - 14, pageW - 12, pageH - 14)
   doc.setTextColor(120)
-  doc.setFont('helvetica', 'normal')
+  doc.setFont('Roboto', 'normal')
   doc.setFontSize(8)
   doc.text('ACDA Consulting · Confidenţial', 12, pageH - 7)
   doc.text(`Pagina ${pageNum} din ${totalPages}`, pageW - 12, pageH - 7, { align: 'right' })
@@ -81,7 +82,7 @@ function addFooter(doc: jsPDF, pageNum: number, totalPages: number) {
 function addSectionHeading(doc: jsPDF, ctx: BuildCtx, cod: string, titlu: string) {
   ctx.newPageIfNeeded(18)
   doc.setTextColor(...ACDA_BLUE)
-  doc.setFont('helvetica', 'bold')
+  doc.setFont('Roboto', 'bold')
   doc.setFontSize(13)
   doc.text(`${cod} · ${titlu}`, ctx.marginX, ctx.y)
   doc.setDrawColor(...ACDA_ACCENT)
@@ -89,7 +90,7 @@ function addSectionHeading(doc: jsPDF, ctx: BuildCtx, cod: string, titlu: string
   doc.line(ctx.marginX, ctx.y + 1.5, ctx.marginX + 40, ctx.y + 1.5)
   ctx.y += 8
   doc.setTextColor(...TEXT_DARK)
-  doc.setFont('helvetica', 'normal')
+  doc.setFont('Roboto', 'normal')
   doc.setFontSize(10)
 }
 
@@ -107,10 +108,10 @@ function addParagraph(doc: jsPDF, ctx: BuildCtx, text: string) {
 function addNarrative(doc: jsPDF, ctx: BuildCtx, pageNum: number) {
   const n = ctx.input.narratives[pageNum]
   if (!n?.text) return
-  doc.setFont('helvetica', 'italic')
+  doc.setFont('Roboto', 'italic')
   doc.setTextColor(60)
   addParagraph(doc, ctx, n.text)
-  doc.setFont('helvetica', 'normal')
+  doc.setFont('Roboto', 'normal')
   doc.setTextColor(...TEXT_DARK)
 }
 
@@ -118,7 +119,7 @@ function addKV(doc: jsPDF, ctx: BuildCtx, rows: [string, string][]) {
   autoTable(doc, {
     startY: ctx.y,
     margin: { left: ctx.marginX, right: ctx.marginX },
-    styles: { fontSize: 9, cellPadding: 2, textColor: TEXT_DARK },
+    styles: { font: 'Roboto', fontSize: 9, cellPadding: 2, textColor: TEXT_DARK },
     columnStyles: { 0: { fontStyle: 'bold', cellWidth: 55, textColor: ACDA_BLUE }, 1: { cellWidth: 'auto' } },
     theme: 'plain',
     body: rows,
@@ -224,8 +225,8 @@ const SECTIONS: SectionDef[] = [
           margin: { left: ctx.marginX, right: ctx.marginX },
           head: [['Câmp', 'Valoare']],
           body: rows,
-          styles: { fontSize: 9 },
-          headStyles: { fillColor: ACDA_BLUE, textColor: 255 },
+          styles: { font: 'Roboto', fontSize: 9 },
+          headStyles: { font: 'Roboto', fontStyle: 'bold', fillColor: ACDA_BLUE, textColor: 255 },
         })
         // @ts-expect-error autoTable plugin
         ctx.y = (doc.lastAutoTable?.finalY ?? ctx.y) + 4
@@ -264,8 +265,8 @@ const SECTIONS: SectionDef[] = [
           margin: { left: ctx.marginX, right: ctx.marginX },
           head: [['Componentă', 'Valoare']],
           body: rows,
-          styles: { fontSize: 9 },
-          headStyles: { fillColor: ACDA_BLUE, textColor: 255 },
+          styles: { font: 'Roboto', fontSize: 9 },
+          headStyles: { font: 'Roboto', fontStyle: 'bold', fillColor: ACDA_BLUE, textColor: 255 },
         })
         // @ts-expect-error autoTable plugin
         ctx.y = (doc.lastAutoTable?.finalY ?? ctx.y) + 4
@@ -309,8 +310,8 @@ const SECTIONS: SectionDef[] = [
             i.score != null ? i.score.toFixed(1) : '—',
             i.confidence_level ?? '—',
           ]),
-          styles: { fontSize: 9 },
-          headStyles: { fillColor: ACDA_BLUE, textColor: 255 },
+          styles: { font: 'Roboto', fontSize: 9 },
+          headStyles: { font: 'Roboto', fontStyle: 'bold', fillColor: ACDA_BLUE, textColor: 255 },
         })
         // @ts-expect-error autoTable plugin
         ctx.y = (doc.lastAutoTable?.finalY ?? ctx.y) + 4
@@ -332,8 +333,8 @@ const SECTIONS: SectionDef[] = [
           margin: { left: ctx.marginX, right: ctx.marginX },
           head: [['Problemă', 'Descriere']],
           body: rows,
-          styles: { fontSize: 9 },
-          headStyles: { fillColor: ACDA_BLUE, textColor: 255 },
+          styles: { font: 'Roboto', fontSize: 9 },
+          headStyles: { font: 'Roboto', fontStyle: 'bold', fillColor: ACDA_BLUE, textColor: 255 },
         })
         // @ts-expect-error autoTable plugin
         ctx.y = (doc.lastAutoTable?.finalY ?? ctx.y) + 4
@@ -355,8 +356,8 @@ const SECTIONS: SectionDef[] = [
           margin: { left: ctx.marginX, right: ctx.marginX },
           head: [['Oportunitate', 'Detaliu']],
           body: rows,
-          styles: { fontSize: 9 },
-          headStyles: { fillColor: ACDA_BLUE, textColor: 255 },
+          styles: { font: 'Roboto', fontSize: 9 },
+          headStyles: { font: 'Roboto', fontStyle: 'bold', fillColor: ACDA_BLUE, textColor: 255 },
         })
         // @ts-expect-error autoTable plugin
         ctx.y = (doc.lastAutoTable?.finalY ?? ctx.y) + 4
@@ -378,8 +379,8 @@ const SECTIONS: SectionDef[] = [
           margin: { left: ctx.marginX, right: ctx.marginX },
           head: [['Iniţiativă', 'Valoare']],
           body: rows,
-          styles: { fontSize: 9 },
-          headStyles: { fillColor: ACDA_BLUE, textColor: 255 },
+          styles: { font: 'Roboto', fontSize: 9 },
+          headStyles: { font: 'Roboto', fontStyle: 'bold', fillColor: ACDA_BLUE, textColor: 255 },
         })
         // @ts-expect-error autoTable plugin
         ctx.y = (doc.lastAutoTable?.finalY ?? ctx.y) + 4
@@ -395,10 +396,10 @@ const SECTIONS: SectionDef[] = [
       addNarrative(doc, ctx, 9)
       const fields = ctx.input.fieldsByPage[9] ?? {}
       for (const f of Object.values(fields)) {
-        doc.setFont('helvetica', 'bold'); doc.setTextColor(...ACDA_BLUE)
+        doc.setFont('Roboto', 'bold'); doc.setTextColor(...ACDA_BLUE)
         ctx.newPageIfNeeded(6)
         doc.text(f.label, ctx.marginX, ctx.y); ctx.y += 4.5
-        doc.setFont('helvetica', 'normal'); doc.setTextColor(...TEXT_DARK)
+        doc.setFont('Roboto', 'normal'); doc.setTextColor(...TEXT_DARK)
         addParagraph(doc, ctx, f.original_value || '—')
       }
     },
@@ -418,8 +419,8 @@ const SECTIONS: SectionDef[] = [
           margin: { left: ctx.marginX, right: ctx.marginX },
           head: [['Fază / Element', 'Valoare']],
           body: rows,
-          styles: { fontSize: 9 },
-          headStyles: { fillColor: ACDA_BLUE, textColor: 255 },
+          styles: { font: 'Roboto', fontSize: 9 },
+          headStyles: { font: 'Roboto', fontStyle: 'bold', fillColor: ACDA_BLUE, textColor: 255 },
         })
         // @ts-expect-error autoTable plugin
         ctx.y = (doc.lastAutoTable?.finalY ?? ctx.y) + 4
@@ -511,30 +512,30 @@ function drawCover(doc: jsPDF, clientName: string, globalScore: number) {
   doc.rect(0, 0, pageW, pageH, 'F')
 
   doc.setTextColor(255, 255, 255)
-  doc.setFont('helvetica', 'bold')
+  doc.setFont('Roboto', 'bold')
   doc.setFontSize(48)
   doc.text('ACDA', pageW / 2, 60, { align: 'center' })
 
   doc.setFontSize(12)
-  doc.setFont('helvetica', 'normal')
+  doc.setFont('Roboto', 'normal')
   doc.text('Consulting Group', pageW / 2, 70, { align: 'center' })
 
   doc.setDrawColor(255, 255, 255)
   doc.setLineWidth(0.4)
   doc.line(pageW / 2 - 30, 80, pageW / 2 + 30, 80)
 
-  doc.setFont('helvetica', 'bold')
+  doc.setFont('Roboto', 'bold')
   doc.setFontSize(24)
   doc.text('Raport Transformare Digitală', pageW / 2, 110, { align: 'center' })
 
-  doc.setFont('helvetica', 'normal')
+  doc.setFont('Roboto', 'normal')
   doc.setFontSize(14)
   doc.text(clientName, pageW / 2, 125, { align: 'center' })
 
   // Scor global — placard
   doc.setFillColor(...ACDA_ACCENT)
   doc.roundedRect(pageW / 2 - 40, 155, 80, 50, 4, 4, 'F')
-  doc.setFont('helvetica', 'bold')
+  doc.setFont('Roboto', 'bold')
   doc.setFontSize(10)
   doc.text('SCOR GLOBAL', pageW / 2, 166, { align: 'center' })
   doc.setFontSize(40)
@@ -542,7 +543,7 @@ function drawCover(doc: jsPDF, clientName: string, globalScore: number) {
   doc.setFontSize(10)
   doc.text('/ 10', pageW / 2, 200, { align: 'center' })
 
-  doc.setFont('helvetica', 'normal')
+  doc.setFont('Roboto', 'normal')
   doc.setFontSize(11)
   doc.text(new Date().toLocaleDateString('ro-RO', { day: '2-digit', month: 'long', year: 'numeric' }),
     pageW / 2, pageH - 30, { align: 'center' })
@@ -558,6 +559,7 @@ export class PDFExportService {
     const globalScore = computeGlobalScore(input.maturityIndicators)
 
     const doc = new jsPDF({ unit: 'mm', format: 'a4' })
+    registerRoboto(doc)
     const pageW = doc.internal.pageSize.getWidth()
     const pageH = doc.internal.pageSize.getHeight()
     const marginX = 14

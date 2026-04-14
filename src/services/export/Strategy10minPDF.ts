@@ -2,6 +2,7 @@
 // A4 portrait, un capitol per pagină + cover (5 pagini total). Reutilizează jsPDF.
 
 import jsPDF from 'jspdf'
+import { registerRoboto } from './fonts/registerRoboto'
 
 const ACDA_BLUE: [number, number, number] = [27, 58, 92]
 const ACDA_ACCENT: [number, number, number] = [46, 117, 182]
@@ -43,9 +44,9 @@ function addHeader(doc: jsPDF, clientName: string) {
   doc.setFillColor(...ACDA_BLUE)
   doc.rect(0, 0, pageW, 14, 'F')
   doc.setTextColor(255, 255, 255)
-  doc.setFont('helvetica', 'bold'); doc.setFontSize(10)
+  doc.setFont('Roboto', 'bold'); doc.setFontSize(10)
   doc.text('ACDA', 14, 9)
-  doc.setFont('helvetica', 'normal'); doc.setFontSize(9)
+  doc.setFont('Roboto', 'normal'); doc.setFontSize(9)
   doc.text(`Strategie de Transformare · ${clientName}`, pageW - 14, 9, { align: 'right' })
 }
 
@@ -53,14 +54,14 @@ function addFooter(doc: jsPDF, page: number, total: number) {
   const pageW = doc.internal.pageSize.getWidth()
   const pageH = doc.internal.pageSize.getHeight()
   doc.setDrawColor(220); doc.line(14, pageH - 14, pageW - 14, pageH - 14)
-  doc.setTextColor(120); doc.setFont('helvetica', 'normal'); doc.setFontSize(8)
+  doc.setTextColor(120); doc.setFont('Roboto', 'normal'); doc.setFontSize(8)
   doc.text('ACDA Consulting · Confidenţial · Prezentabil în 10 minute', 14, pageH - 7)
   doc.text(`${page} / ${total}`, pageW - 14, pageH - 7, { align: 'right' })
 }
 
 function writeChapterTitle(doc: jsPDF, num: number, title: string, y: number): number {
   doc.setTextColor(...ACDA_ACCENT)
-  doc.setFont('helvetica', 'bold'); doc.setFontSize(10)
+  doc.setFont('Roboto', 'bold'); doc.setFontSize(10)
   doc.text(`CAPITOLUL ${num}`, 14, y)
   doc.setTextColor(...ACDA_BLUE); doc.setFontSize(22)
   doc.text(title, 14, y + 9)
@@ -70,7 +71,7 @@ function writeChapterTitle(doc: jsPDF, num: number, title: string, y: number): n
 }
 
 function writeParagraphs(doc: jsPDF, text: string, y: number, maxY: number): number {
-  doc.setTextColor(...TEXT); doc.setFont('helvetica', 'normal'); doc.setFontSize(11)
+  doc.setTextColor(...TEXT); doc.setFont('Roboto', 'normal'); doc.setFontSize(11)
   const pageW = doc.internal.pageSize.getWidth()
   const contentW = pageW - 28
   const paragraphs = text.split('\n\n')
@@ -96,9 +97,9 @@ function drawTimeline(doc: jsPDF, milestones: Milestone[], y: number) {
     const x = left + ((right - left) * i) / Math.max(1, n - 1)
     doc.setFillColor(...ACDA_BLUE)
     doc.circle(x, axisY, 2.5, 'F')
-    doc.setTextColor(...ACDA_BLUE); doc.setFont('helvetica', 'bold'); doc.setFontSize(9)
+    doc.setTextColor(...ACDA_BLUE); doc.setFont('Roboto', 'bold'); doc.setFontSize(9)
     doc.text(milestones[i].when, x, axisY - 5, { align: 'center' })
-    doc.setTextColor(...TEXT); doc.setFont('helvetica', 'normal'); doc.setFontSize(9)
+    doc.setTextColor(...TEXT); doc.setFont('Roboto', 'normal'); doc.setFontSize(9)
     const label = doc.splitTextToSize(milestones[i].label, 40) as string[]
     let ly = axisY + 8
     for (const line of label) { doc.text(line, x, ly, { align: 'center' }); ly += 4 }
@@ -107,20 +108,21 @@ function drawTimeline(doc: jsPDF, milestones: Milestone[], y: number) {
 
 export async function exportStrategy10minPDF(input: Strategy10minPDFInput): Promise<void> {
   const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' })
+  registerRoboto(doc)
   const pageW = doc.internal.pageSize.getWidth()
   const pageH = doc.internal.pageSize.getHeight()
   const bottomY = pageH - 20
 
   // Cover
   doc.setFillColor(...ACDA_BLUE); doc.rect(0, 0, pageW, pageH, 'F')
-  doc.setTextColor(255, 255, 255); doc.setFont('helvetica', 'bold'); doc.setFontSize(44)
+  doc.setTextColor(255, 255, 255); doc.setFont('Roboto', 'bold'); doc.setFontSize(44)
   doc.text('ACDA', pageW / 2, 70, { align: 'center' })
-  doc.setFont('helvetica', 'normal'); doc.setFontSize(11)
+  doc.setFont('Roboto', 'normal'); doc.setFontSize(11)
   doc.text('Consulting Group', pageW / 2, 78, { align: 'center' })
-  doc.setFont('helvetica', 'bold'); doc.setFontSize(22)
+  doc.setFont('Roboto', 'bold'); doc.setFontSize(22)
   doc.text('Strategie de', pageW / 2, 120, { align: 'center' })
   doc.text('Transformare Digitală', pageW / 2, 130, { align: 'center' })
-  doc.setFont('helvetica', 'normal'); doc.setFontSize(14)
+  doc.setFont('Roboto', 'normal'); doc.setFontSize(14)
   doc.text(input.clientName, pageW / 2, 150, { align: 'center' })
   doc.setFontSize(10)
   doc.text(`Scor curent ${input.globalScore.toFixed(2)} / 5.00 · ${input.level}`, pageW / 2, 162, { align: 'center' })
@@ -148,9 +150,9 @@ export async function exportStrategy10minPDF(input: Strategy10minPDFInput): Prom
     if (y > bottomY - 30) break
     doc.setDrawColor(220); doc.setFillColor(246, 249, 252)
     doc.roundedRect(14, y, pageW - 28, 26, 2, 2, 'FD')
-    doc.setTextColor(...ACDA_BLUE); doc.setFont('helvetica', 'bold'); doc.setFontSize(12)
+    doc.setTextColor(...ACDA_BLUE); doc.setFont('Roboto', 'bold'); doc.setFontSize(12)
     doc.text(pilar.titlu, 18, y + 7)
-    doc.setTextColor(...TEXT); doc.setFont('helvetica', 'normal'); doc.setFontSize(9)
+    doc.setTextColor(...TEXT); doc.setFont('Roboto', 'normal'); doc.setFontSize(9)
     doc.text(`Impact: ${pilar.impact}   ·   Efort: ${pilar.efort}`, 18, y + 13)
     const narr = doc.splitTextToSize(pilar.narativ, pageW - 36) as string[]
     let ny = y + 19
@@ -167,9 +169,9 @@ export async function exportStrategy10minPDF(input: Strategy10minPDFInput): Prom
   // First step block
   doc.setFillColor(...ACDA_ACCENT)
   doc.roundedRect(14, y, pageW - 28, 32, 3, 3, 'F')
-  doc.setTextColor(255, 255, 255); doc.setFont('helvetica', 'bold'); doc.setFontSize(11)
+  doc.setTextColor(255, 255, 255); doc.setFont('Roboto', 'bold'); doc.setFontSize(11)
   doc.text('PRIMUL PAS CONCRET', 18, y + 7)
-  doc.setFont('helvetica', 'normal'); doc.setFontSize(10)
+  doc.setFont('Roboto', 'normal'); doc.setFontSize(10)
   doc.text(`Acţiune: ${input.firstStep.actiune}`, 18, y + 15)
   doc.text(`Deadline: ${input.firstStep.deadline}`, 18, y + 21)
   doc.text(`Responsabil: ${input.firstStep.responsabil}`, 18, y + 27)
