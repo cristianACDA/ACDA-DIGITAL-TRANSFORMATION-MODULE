@@ -217,15 +217,14 @@ app.put('/api/projects/:id/ebit', (req, res) => {
   const incoming = (req.body ?? {}) as Record<string, unknown>
   const existing = (getEbitRow(project_id) ?? {}) as Record<string, unknown>
 
-  // MERGE behavior: pentru fiecare câmp, folosim incoming doar dacă a fost
-  // transmis explicit (prezent ca own property — fie cu valoare, fie null).
-  // Câmpurile absente din payload păstrează valoarea existentă. Asta împiedică
-  // paginile cockpit care editează un subset să şteargă celelalte câmpuri
-  // (ex.: pag. 2 nu atinge change_management_spend_current).
-  const pick = (key: string, fallback: unknown = null) =>
-    Object.prototype.hasOwnProperty.call(incoming, key)
-      ? incoming[key] ?? null
-      : (existing[key] ?? fallback)
+  // MERGE la nivel de valoare: null/undefined din incoming nu suprascrie DB.
+  // Doar o valoare non-null+non-undefined rămâne scrisă. Pentru a şterge un
+  // câmp e nevoie de endpoint DELETE /ebit (deja exists) sau o valoare 0 dacă
+  // semantica zero-is-deleted e aplicabilă domeniului.
+  const pick = (key: string) =>
+    (incoming[key] !== undefined && incoming[key] !== null)
+      ? incoming[key]
+      : (existing[key] ?? null)
 
   const created_at = (existing.created_at as string | undefined) ?? now()
   const row = {
