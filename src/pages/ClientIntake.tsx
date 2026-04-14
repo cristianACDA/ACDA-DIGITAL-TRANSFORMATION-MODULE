@@ -91,7 +91,7 @@ function SectionDivider({ children }: { children: string }) {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function ClientIntake() {
-  const { setEbitBaseline, ebitBaseline } = useProjectContext()
+  const { setEbitBaseline, ebitBaseline, isHydrating, activeProjectId } = useProjectContext()
   const [form, setForm] = useState<EBITForm>(EMPTY_FORM)
   const [targetManuallyEdited, setTargetManuallyEdited] = useState(false)
   const seededRef = useRef(false)
@@ -99,7 +99,14 @@ export default function ClientIntake() {
   // Hidratează formul din EBIT persistat (la prima apariţie după load DB).
   useEffect(() => {
     if (seededRef.current) return
-    if (!ebitBaseline) return
+    // Aşteaptă finalizarea hidratării. Dacă există date persistate, le hidratăm
+    // în form; dacă nu există (proiect nou), doar marcăm ref-ul ca „seeded" ca
+    // scrierile ulterioare să fie permise.
+    if (activeProjectId && isHydrating) return
+    if (!ebitBaseline) {
+      seededRef.current = true
+      return
+    }
     seededRef.current = true
     const numStr = (v: number | undefined | null) => (typeof v === 'number' ? String(v) : '')
     setForm({
@@ -113,7 +120,7 @@ export default function ClientIntake() {
       financial_notes:                 ebitBaseline.financial_notes ?? '',
     })
     setTargetManuallyEdited(true)
-  }, [ebitBaseline])
+  }, [ebitBaseline, isHydrating, activeProjectId])
 
   const set = (field: keyof EBITForm) => (v: string) => setForm((prev) => ({ ...prev, [field]: v }))
 
@@ -144,6 +151,10 @@ export default function ClientIntake() {
   const ratioOk    = ratio1to1 >= RULE_1_TO_1_MINIMUM
 
   useEffect(() => {
+    // Guard: nu scrie până nu s-a hidratat formul din ebitBaseline persistat.
+    // Fără asta, la mount form=EMPTY_FORM → revenue=0, ebitCur=0 → setEbitBaseline(null)
+    // → DELETE pe /ebit → pierdem ebit_target+change_management_spend persistate.
+    if (!seededRef.current) return
     const now = new Date().toISOString()
     if (revenue > 0 && ebitCur > 0) {
       setEbitBaseline({

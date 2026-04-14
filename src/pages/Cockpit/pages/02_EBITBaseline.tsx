@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import ConfidenceField from '../../../components/ConfidenceField'
 import { useProjectContext } from '../../../context/ProjectContext'
 
@@ -7,9 +7,15 @@ const SRC = { confidence: 0.7, confidenceLevel: 'MEDIUM' as const, dataSource: '
 function fmt(n: number | undefined | null): string {
   return typeof n === 'number' ? String(n) : ''
 }
+function num(v: string): number | undefined {
+  if (v.trim() === '') return undefined
+  const n = parseFloat(v)
+  return Number.isFinite(n) ? n : undefined
+}
 
 export default function EBITBaselinePage() {
-  const { ebitBaseline } = useProjectContext()
+  const { ebitBaseline, setEbitBaseline, isHydrating, activeProjectId } = useProjectContext()
+
   const [form, setForm] = useState(() => ({
     annual_revenue:       fmt(ebitBaseline?.annual_revenue),
     operational_costs:    fmt(ebitBaseline?.operational_costs),
@@ -20,12 +26,65 @@ export default function EBITBaselinePage() {
     ebit_target_delta:    fmt(ebitBaseline?.ebit_target_delta_percent),
     financial_notes:      ebitBaseline?.financial_notes ?? '',
   }))
+
+  // seededRef previne scrierea înapoi la context până nu s-a hidratat formul.
+  const seededRef = useRef(false)
+
+  // Re-hidratează formul la prima ocazie după ce ebitBaseline devine disponibil
+  // (hidratare asincronă sau schimbare proiect activ).
+  useEffect(() => {
+    if (activeProjectId && isHydrating) return
+    if (seededRef.current) return
+    seededRef.current = true
+    if (!ebitBaseline) return
+    setForm({
+      annual_revenue:       fmt(ebitBaseline.annual_revenue),
+      operational_costs:    fmt(ebitBaseline.operational_costs),
+      ebit_current:         fmt(ebitBaseline.ebit_current),
+      ebit_margin_current:  fmt(ebitBaseline.ebit_margin_current),
+      it_spend_current:     fmt(ebitBaseline.it_spend_current),
+      ebit_target:          fmt(ebitBaseline.ebit_target),
+      ebit_target_delta:    fmt(ebitBaseline.ebit_target_delta_percent),
+      financial_notes:      ebitBaseline.financial_notes ?? '',
+    })
+  }, [ebitBaseline, isHydrating, activeProjectId])
+
   const set = (k: keyof typeof form) => (v: string) => setForm((p) => ({ ...p, [k]: v }))
 
   const delta = useMemo(() => {
     const t = parseFloat(form.ebit_target), c = parseFloat(form.ebit_current)
-    return isFinite(t) && isFinite(c) ? t - c : 0
+    return Number.isFinite(t) && Number.isFinite(c) ? t - c : 0
   }, [form.ebit_current, form.ebit_target])
+
+  // Sincronizare înapoi la context — merge peste ebitBaseline existent, ca să
+  // păstrăm câmpurile care nu sunt pe pagina 2 (change_management_spend,
+  // rule_1_to_1_ratio, confidence etc.). Serverul face merge la PUT.
+  useEffect(() => {
+    if (!seededRef.current) return
+    const now = new Date().toISOString()
+    const base = ebitBaseline ?? {
+      id: `ebit-${activeProjectId ?? 'local'}`,
+      project_id: activeProjectId ?? 'local',
+      created_at: now,
+      updated_at: now,
+    }
+    setEbitBaseline({
+      ...base,
+      annual_revenue:            num(form.annual_revenue),
+      operational_costs:         num(form.operational_costs),
+      ebit_current:              num(form.ebit_current),
+      ebit_margin_current:       num(form.ebit_margin_current),
+      it_spend_current:          num(form.it_spend_current),
+      ebit_target:               num(form.ebit_target),
+      ebit_target_delta_percent: num(form.ebit_target_delta),
+      financial_notes:           form.financial_notes || undefined,
+      updated_at: now,
+    })
+    // Intenţionat fără `ebitBaseline`/`setEbitBaseline` în deps — spread-ul pe
+    // `base` e sincron şi nu vrem să re-declanşăm scrierea la oglindirea
+    // contextului înapoi.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form])
 
   return (
     <section className="flex flex-col gap-4">
