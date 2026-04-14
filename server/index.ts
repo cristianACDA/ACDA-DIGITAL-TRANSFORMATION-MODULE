@@ -164,7 +164,7 @@ app.put('/api/projects/:id', (req, res) => {
     id,
     client_id: incoming.client_id ?? existing?.client_id ?? 'local-client',
     name: incoming.name ?? existing?.name ?? 'Proiect',
-    status: incoming.status ?? existing?.status ?? 'draft',
+    status: incoming.status ?? existing?.status ?? 'CIORNA',
     current_stage: incoming.current_stage,
     methodology_version: incoming.methodology_version ?? existing?.methodology_version ?? 'v1.1',
     completion_progress: incoming.completion_progress,

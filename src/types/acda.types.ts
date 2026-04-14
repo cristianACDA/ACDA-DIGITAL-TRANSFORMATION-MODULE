@@ -1,14 +1,14 @@
 import type { MATURITY_INDICATORS, SCORE_THRESHOLDS } from "../constants/acda.constants";
+import type { StatusProiect } from "../contracts/agent-contracts";
 
 // ─── Enums ────────────────────────────────────────────────────────────────────
 
-export enum ProjectStatus {
-  Draft     = "draft",
-  Active    = "active",
-  Review    = "review",
-  Completed = "completed",
-  Archived  = "archived",
-}
+/**
+ * Statusul proiectului — unificat cu contractele agenţilor (D-CTD-01).
+ * Valori: CIORNA, VALIDARE_CONSULTANT, ASTEAPTA_APROBARE, APROBAT, RESPINS,
+ * REVIEW_OPUS, FINALIZAT, ARHIVAT.
+ */
+export type ProjectStatus = StatusProiect;
 
 export enum MaturityLevel {
   Neconform  = "NECONFORM",
@@ -212,7 +212,7 @@ export interface BusinessCase {
   estimated_ebit_contribution?: number;
   roi_percent?: number;
   payback_months?: number;
-  confidence_level?: number;
+  confidence_level?: "HIGH" | "MEDIUM" | "LOW";
   assumptions?: string;
   created_at: string;
   updated_at: string;
