@@ -152,7 +152,11 @@ app.get('/api/projects/:id', (req, res) => {
   const client = getClientRow((project as { client_id: string }).client_id)
   const ebit = getEbitRow(req.params.id) ?? null
   const maturity = getMaturityRows(req.params.id)
-  res.json({ project, client, ebitBaseline: ebit, maturityIndicators: maturity })
+  const processes = db.prepare('SELECT * FROM Process WHERE project_id = ? ORDER BY created_at').all(req.params.id)
+  const problems = db.prepare('SELECT * FROM Problem WHERE project_id = ? ORDER BY created_at').all(req.params.id)
+  const opportunities = db.prepare('SELECT * FROM Opportunity WHERE project_id = ? ORDER BY created_at').all(req.params.id)
+  res.json({ project, client, ebitBaseline: ebit, maturityIndicators: maturity,
+             processes, problems, opportunities })
 })
 
 app.put('/api/projects/:id', (req, res) => {
@@ -275,6 +279,207 @@ app.put('/api/projects/:id/maturity', (req, res) => {
   })
   tx(indicators)
   res.json(getMaturityRows(project_id))
+})
+
+// ─── F4: Process / Problem / Opportunity CRUD ────────────────────────────────
+// PUT = replace all pentru proiect (delete + re-insert în tranzacţie).
+// GET = listă ordonată după created_at.
+
+function makeCrud<Row extends Record<string, unknown>>(
+  table: 'Process' | 'Problem' | 'Opportunity',
+  fields: string[],
+) {
+  const selectAll = db.prepare(`SELECT * FROM ${table} WHERE project_id = ? ORDER BY created_at`)
+  const deleteAll = db.prepare(`DELETE FROM ${table} WHERE project_id = ?`)
+  const insertCols = ['id', 'project_id', ...fields, 'created_at', 'updated_at']
+  const placeholders = insertCols.map((c) => '@' + c).join(', ')
+  const insert = db.prepare(`INSERT INTO ${table} (${insertCols.join(', ')}) VALUES (${placeholders})`)
+  return {
+    list: (projectId: string) => selectAll.all(projectId) as Row[],
+    replace: (projectId: string, items: Array<Record<string, unknown>>) => {
+      const tx = db.transaction(() => {
+        deleteAll.run(projectId)
+        const ts = now()
+        items.forEach((item, i) => {
+          const row: Record<string, unknown> = {
+            id: (typeof item.id === 'string' && item.id) ? item.id : `${projectId}-${table.toLowerCase()}-${Date.now()}-${i}`,
+            project_id: projectId,
+            created_at: (typeof item.created_at === 'string' && item.created_at) ? item.created_at : ts,
+            updated_at: ts,
+          }
+          for (const f of fields) row[f] = item[f] ?? null
+          insert.run(row)
+        })
+      })
+      tx()
+      return selectAll.all(projectId) as Row[]
+    },
+  }
+}
+
+const processCrud = makeCrud('Process', [
+  'name', 'description', 'time_execution', 'cost_estimated',
+  'blocking_score', 'ebit_impact', 'citation',
+  'confidence', 'confidence_level', 'data_source',
+])
+const problemCrud = makeCrud('Problem', [
+  'title', 'description', 'financial_impact', 'root_cause',
+  'linked_indicators', 'citation',
+  'confidence', 'confidence_level', 'data_source',
+])
+const opportunityCrud = makeCrud('Opportunity', [
+  'title', 'type', 'ebit_impact_estimated', 'effort', 'risk', 'citation',
+  'confidence', 'confidence_level', 'data_source',
+])
+
+app.get('/api/projects/:id/processes', (req, res) => {
+  if (!getProjectRow(req.params.id)) return res.status(404).json({ error: 'project not found' })
+  res.json(processCrud.list(req.params.id))
+})
+app.put('/api/projects/:id/processes', (req, res) => {
+  if (!getProjectRow(req.params.id)) return res.status(404).json({ error: 'project not found' })
+  const items = Array.isArray(req.body) ? req.body : []
+  res.json(processCrud.replace(req.params.id, items))
+})
+
+app.get('/api/projects/:id/problems', (req, res) => {
+  if (!getProjectRow(req.params.id)) return res.status(404).json({ error: 'project not found' })
+  res.json(problemCrud.list(req.params.id))
+})
+app.put('/api/projects/:id/problems', (req, res) => {
+  if (!getProjectRow(req.params.id)) return res.status(404).json({ error: 'project not found' })
+  const items = Array.isArray(req.body) ? req.body : []
+  res.json(problemCrud.replace(req.params.id, items))
+})
+
+app.get('/api/projects/:id/opportunities', (req, res) => {
+  if (!getProjectRow(req.params.id)) return res.status(404).json({ error: 'project not found' })
+  res.json(opportunityCrud.list(req.params.id))
+})
+app.put('/api/projects/:id/opportunities', (req, res) => {
+  if (!getProjectRow(req.params.id)) return res.status(404).json({ error: 'project not found' })
+  const items = Array.isArray(req.body) ? req.body : []
+  res.json(opportunityCrud.replace(req.params.id, items))
+})
+
+// ─── POST /api/projects/:id/ingest ───────────────────────────────────────────
+// Primeşte un AgentCTDOutput (sau subset) şi populează proiectul complet.
+// Suprascrie EBIT, indicatori, procese, probleme, oportunităţi — în tranzacţie.
+app.post('/api/projects/:id/ingest', (req, res) => {
+  const project_id = req.params.id
+  if (!getProjectRow(project_id)) return res.status(404).json({ error: 'project not found' })
+  const payload = req.body ?? {}
+
+  const tx = db.transaction(() => {
+    const ts = now()
+
+    // EBIT
+    if (payload.date_financiare) {
+      const df = payload.date_financiare
+      const existing = getEbitRow(project_id) as Record<string, unknown> | undefined
+      upsertEbit.run(nullify({
+        id: existing?.id ?? `ebit-${project_id}`,
+        project_id,
+        annual_revenue: df.venituri, operational_costs: df.costuri_operationale,
+        ebit_current: df.ebit_curent, ebit_margin_current: df.marja_ebit,
+        ebit_target: df.ebit_target, ebit_target_delta_percent: null,
+        it_spend_current: df.cost_it, change_management_spend_current: null,
+        rule_1_to_1_ratio: null, financial_notes: null,
+        confidence: df.confidence?.confidence, confidence_level: df.confidence?.confidence_level,
+        data_source: df.confidence?.data_source,
+        created_at: (existing?.created_at as string) ?? ts, updated_at: ts,
+      }, ['annual_revenue', 'operational_costs', 'ebit_current', 'ebit_margin_current',
+          'ebit_target', 'ebit_target_delta_percent', 'it_spend_current',
+          'change_management_spend_current', 'rule_1_to_1_ratio', 'financial_notes',
+          'confidence', 'confidence_level', 'data_source']))
+    }
+
+    // Indicatori
+    if (Array.isArray(payload.indicatori)) {
+      for (const ind of payload.indicatori as Array<Record<string, unknown>>) {
+        const code = ind.cod ?? ind.indicator_code
+        if (typeof code !== 'string') continue
+        const existing = db.prepare('SELECT created_at FROM MaturityIndicator WHERE project_id = ? AND indicator_code = ?')
+          .get(project_id, code) as { created_at?: string } | undefined
+        const conf = (ind.confidence ?? {}) as Record<string, unknown>
+        upsertIndicator.run(nullify({
+          id: `${project_id}-${code}`, project_id,
+          indicator_code: code, indicator_name: ind.nume ?? ind.indicator_name ?? null,
+          area: ind.arie ?? ind.area ?? null,
+          raw_input_json: ind.raw_input_json ?? (ind.raw_input ? JSON.stringify(ind.raw_input) : null),
+          score: ind.scor ?? ind.score ?? null,
+          calculation_method: ind.calculation_method ?? null,
+          consultant_comment: ind.comentariu ?? ind.consultant_comment ?? null,
+          confidence: conf.confidence, confidence_level: conf.confidence_level,
+          data_source: conf.data_source,
+          created_at: existing?.created_at ?? ts, updated_at: ts,
+        }, ['indicator_name', 'area', 'raw_input_json', 'score', 'calculation_method',
+            'consultant_comment', 'confidence', 'confidence_level', 'data_source']))
+      }
+    }
+
+    // Procese
+    if (Array.isArray(payload.procese)) {
+      const mapped = (payload.procese as Array<Record<string, unknown>>).map((p) => {
+        const conf = (p.confidence ?? {}) as Record<string, unknown>
+        return {
+          name: p.nume ?? p.name, description: p.descriere ?? p.description,
+          time_execution: p.timp_executie ?? p.time_execution,
+          cost_estimated: p.cost_estimat ?? p.cost_estimated,
+          blocking_score: p.grad_blocare ?? p.blocking_score,
+          ebit_impact: p.impact_ebit ?? p.ebit_impact,
+          citation: p.citat ?? p.citation,
+          confidence: conf.confidence, confidence_level: conf.confidence_level,
+          data_source: conf.data_source,
+        }
+      })
+      processCrud.replace(project_id, mapped)
+    }
+
+    // Probleme
+    if (Array.isArray(payload.probleme)) {
+      const mapped = (payload.probleme as Array<Record<string, unknown>>).map((p) => {
+        const conf = (p.confidence ?? {}) as Record<string, unknown>
+        const linked = p.indicatori_legati ?? p.linked_indicators
+        return {
+          title: p.titlu ?? p.title, description: p.descriere ?? p.description,
+          financial_impact: p.impact_financiar ?? p.financial_impact,
+          root_cause: p.cauza_radacina ?? p.root_cause,
+          linked_indicators: Array.isArray(linked) ? JSON.stringify(linked) : linked,
+          citation: p.citat ?? p.citation,
+          confidence: conf.confidence, confidence_level: conf.confidence_level,
+          data_source: conf.data_source,
+        }
+      })
+      problemCrud.replace(project_id, mapped)
+    }
+
+    // Oportunităţi
+    if (Array.isArray(payload.oportunitati)) {
+      const mapped = (payload.oportunitati as Array<Record<string, unknown>>).map((o) => {
+        const conf = (o.confidence ?? {}) as Record<string, unknown>
+        return {
+          title: o.titlu ?? o.title, type: o.tip ?? o.type,
+          ebit_impact_estimated: o.impact_ebit_estimat ?? o.ebit_impact_estimated,
+          effort: o.efort ?? o.effort, risk: o.risc ?? o.risk,
+          citation: o.citat ?? o.citation,
+          confidence: conf.confidence, confidence_level: conf.confidence_level,
+          data_source: conf.data_source,
+        }
+      })
+      opportunityCrud.replace(project_id, mapped)
+    }
+  })
+  tx()
+
+  res.json({
+    project: getProjectRow(project_id),
+    ebitBaseline: getEbitRow(project_id),
+    maturityIndicators: getMaturityRows(project_id),
+    processes: processCrud.list(project_id),
+    problems: problemCrud.list(project_id),
+    opportunities: opportunityCrud.list(project_id),
+  })
 })
 
 app.listen(PORT, () => {

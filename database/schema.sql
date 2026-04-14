@@ -75,6 +75,58 @@ CREATE TABLE IF NOT EXISTS MaturityIndicator (
   UNIQUE(project_id, indicator_code)
 );
 
+-- Process, Problem, Opportunity — date operaţionale per proiect.
+-- Adăugate în F4 pentru persistenţă cockpit pag. 4/5/7. Confidence D-CTD-02.
+
+CREATE TABLE IF NOT EXISTS Process (
+  id                 TEXT PRIMARY KEY,
+  project_id         TEXT NOT NULL REFERENCES Project(id) ON DELETE CASCADE,
+  name               TEXT NOT NULL,
+  description        TEXT,
+  time_execution     TEXT,
+  cost_estimated     REAL,
+  blocking_score     INTEGER,
+  ebit_impact        REAL,
+  citation           TEXT,
+  confidence         REAL,
+  confidence_level   TEXT,
+  data_source        TEXT,
+  created_at         TEXT NOT NULL,
+  updated_at         TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS Problem (
+  id                 TEXT PRIMARY KEY,
+  project_id         TEXT NOT NULL REFERENCES Project(id) ON DELETE CASCADE,
+  title              TEXT NOT NULL,
+  description        TEXT,
+  financial_impact   REAL,
+  root_cause         TEXT,
+  linked_indicators  TEXT,
+  citation           TEXT,
+  confidence         REAL,
+  confidence_level   TEXT,
+  data_source        TEXT,
+  created_at         TEXT NOT NULL,
+  updated_at         TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS Opportunity (
+  id                      TEXT PRIMARY KEY,
+  project_id              TEXT NOT NULL REFERENCES Project(id) ON DELETE CASCADE,
+  title                   TEXT NOT NULL,
+  type                    TEXT,
+  ebit_impact_estimated   REAL,
+  effort                  TEXT,
+  risk                    INTEGER,
+  citation                TEXT,
+  confidence              REAL,
+  confidence_level        TEXT,
+  data_source             TEXT,
+  created_at              TEXT NOT NULL,
+  updated_at              TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS MaturityScore (
   id                       TEXT PRIMARY KEY,
   project_id               TEXT NOT NULL UNIQUE REFERENCES Project(id) ON DELETE CASCADE,

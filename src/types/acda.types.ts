@@ -135,20 +135,20 @@ export interface MaturityScore {
   updated_at: string;
 }
 
+/** Proces operaţional — aliniat cu tabelul Process (F4). Campuri D-CTD-02. */
 export interface Process {
   id: string;
   project_id: string;
   name: string;
-  department?: string;
-  owner_name?: string;
   description?: string;
-  automation_level?: number;
-  execution_frequency?: string;
-  avg_execution_time?: number;
-  estimated_cost_per_cycle?: number;
-  pain_level?: number;
-  criticality?: number;
-  linked_ebit_impact?: number;
+  time_execution?: string;
+  cost_estimated?: number;
+  blocking_score?: number;         // 1-5
+  ebit_impact?: number;
+  citation?: string;
+  confidence?: number;
+  confidence_level?: "HIGH" | "MEDIUM" | "LOW";
+  data_source?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -169,36 +169,37 @@ export interface ValueStream {
   updated_at: string;
 }
 
+/** Problemă identificată. Tabel Problem (F4). */
 export interface ProblemStatement {
   id: string;
   project_id: string;
   title: string;
   description?: string;
+  financial_impact?: number;
   root_cause?: string;
-  estimated_financial_impact?: number;
-  estimated_ebit_impact?: number;
-  severity?: number;
-  linked_indicator_code?: IndicatorCode;
-  linked_process_id?: string;
+  /** JSON stringified: array de IndicatorCode. */
+  linked_indicators?: string;
+  citation?: string;
+  confidence?: number;
+  confidence_level?: "HIGH" | "MEDIUM" | "LOW";
+  data_source?: string | null;
   created_at: string;
   updated_at: string;
 }
 
+/** Oportunitate identificată. Tabel Opportunity (F4). */
 export interface Opportunity {
   id: string;
   project_id: string;
   title: string;
-  description?: string;
-  type?: string;
-  origin_source?: OriginSource;
-  linked_problem_id?: string;
-  linked_process_id?: string;
-  estimated_ebit_impact?: number;
-  estimated_operational_impact?: number;
-  estimated_effort?: EffortSize;
-  estimated_risk?: number;
-  priority_hint?: number;
-  status?: string;
+  type?: string;                   // AI / automatizare / integrare / strategie
+  ebit_impact_estimated?: number;
+  effort?: EffortSize;
+  risk?: number;                   // 1-5
+  citation?: string;
+  confidence?: number;
+  confidence_level?: "HIGH" | "MEDIUM" | "LOW";
+  data_source?: string | null;
   created_at: string;
   updated_at: string;
 }

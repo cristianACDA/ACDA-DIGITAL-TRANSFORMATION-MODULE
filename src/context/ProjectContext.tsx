@@ -97,6 +97,9 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
 
   const ebitTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const matTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const procTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const probTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const oppTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const setActiveProjectId = useCallback((id: string | null) => {
     setActiveProjectIdState(id)
@@ -120,6 +123,9 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
           client: bundle.client,
           ebitBaseline: bundle.ebitBaseline,
           maturityIndicators: bundle.maturityIndicators ?? [],
+          processes: bundle.processes ?? [],
+          problemStatements: bundle.problems ?? [],
+          opportunities: bundle.opportunities ?? [],
         }))
       }
       setHydratedFor(activeProjectId)
@@ -155,6 +161,48 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     }, PERSIST_DEBOUNCE_MS)
     return () => { if (matTimer.current) clearTimeout(matTimer.current) }
   }, [state.maturityIndicators, hydratedFor, activeProjectId])
+
+  // Persist procese (F4) — replace-all debounced.
+  useEffect(() => {
+    if (!activeProjectId || hydratedFor !== activeProjectId) return
+    if (procTimer.current) clearTimeout(procTimer.current)
+    const snapshot = state.processes
+    const pid = activeProjectId
+    procTimer.current = setTimeout(() => {
+      apiAdapter.saveProcesses(pid, snapshot).catch((err) => {
+        console.error('[ProjectContext] saveProcesses failed', err)
+      })
+    }, PERSIST_DEBOUNCE_MS)
+    return () => { if (procTimer.current) clearTimeout(procTimer.current) }
+  }, [state.processes, hydratedFor, activeProjectId])
+
+  // Persist probleme.
+  useEffect(() => {
+    if (!activeProjectId || hydratedFor !== activeProjectId) return
+    if (probTimer.current) clearTimeout(probTimer.current)
+    const snapshot = state.problemStatements
+    const pid = activeProjectId
+    probTimer.current = setTimeout(() => {
+      apiAdapter.saveProblems(pid, snapshot).catch((err) => {
+        console.error('[ProjectContext] saveProblems failed', err)
+      })
+    }, PERSIST_DEBOUNCE_MS)
+    return () => { if (probTimer.current) clearTimeout(probTimer.current) }
+  }, [state.problemStatements, hydratedFor, activeProjectId])
+
+  // Persist oportunităţi.
+  useEffect(() => {
+    if (!activeProjectId || hydratedFor !== activeProjectId) return
+    if (oppTimer.current) clearTimeout(oppTimer.current)
+    const snapshot = state.opportunities
+    const pid = activeProjectId
+    oppTimer.current = setTimeout(() => {
+      apiAdapter.saveOpportunities(pid, snapshot).catch((err) => {
+        console.error('[ProjectContext] saveOpportunities failed', err)
+      })
+    }, PERSIST_DEBOUNCE_MS)
+    return () => { if (oppTimer.current) clearTimeout(oppTimer.current) }
+  }, [state.opportunities, hydratedFor, activeProjectId])
 
   const actions = useMemo<ProjectActions>(() => ({
     setClient:             (v) => setState((p) => ({ ...p, client: v })),

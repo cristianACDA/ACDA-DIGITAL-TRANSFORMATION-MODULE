@@ -83,9 +83,110 @@ const SEED_INDICATORS: IndicatorSeed[] = [
   },
 ]
 
+// ─── F4 seed helpers ─────────────────────────────────────────────────────────
+// Apelate şi din seed iniţial (proiect nou) şi din backfill (DB pre-F4).
+// Folosesc parameterized queries (CLAUDE.md: nu interpola SQL).
+
+function seedProcesses(db: Database.Database, now: string): void {
+  const stmt = db.prepare(`
+    INSERT INTO Process (id, project_id, name, description, time_execution, cost_estimated,
+      blocking_score, ebit_impact, citation, confidence, confidence_level, data_source,
+      created_at, updated_at)
+    VALUES (@id, @project_id, @name, @description, @time_execution, @cost_estimated,
+      @blocking_score, @ebit_impact, @citation, @confidence, @confidence_level, @data_source,
+      @created_at, @updated_at)
+  `)
+  const rows = [
+    { name: 'Onboarding client nou', description: 'Manual, 5 zile, copy-paste.',
+      time_execution: '5 zile', cost_estimated: 2500, blocking_score: 4, ebit_impact: 45000,
+      citation: 'Onboarding-ul dureaza cam o saptamana. E mult manual.',
+      confidence: 0.8, confidence_level: 'HIGH', data_source: 'transcriere_whisper' },
+    { name: 'Support tier-1', description: '4 agenti, 60% intrebari repetitive.',
+      time_execution: 'continuu', cost_estimated: 8000, blocking_score: 3, ebit_impact: 35000,
+      citation: '60% din tickete sunt aceleasi 20 de intrebari.',
+      confidence: 0.85, confidence_level: 'HIGH', data_source: 'transcriere_whisper' },
+    { name: 'Raportare financiara', description: 'CFO extern, 3 surse, 3 zile/luna.',
+      time_execution: '3 zile/luna', cost_estimated: 3000, blocking_score: 2, ebit_impact: 15000,
+      citation: 'CFO-ul ia date din Stripe, contabilitate, Metabase, si face un Excel.',
+      confidence: 0.75, confidence_level: 'MEDIUM', data_source: 'transcriere_whisper' },
+  ]
+  rows.forEach((p, i) => stmt.run({
+    id: `${SEED_PROJECT_ID}-proc-${i + 1}`, project_id: SEED_PROJECT_ID,
+    ...p, created_at: now, updated_at: now,
+  }))
+}
+
+function seedProblems(db: Database.Database, now: string): void {
+  const stmt = db.prepare(`
+    INSERT INTO Problem (id, project_id, title, description, financial_impact, root_cause,
+      linked_indicators, citation, confidence, confidence_level, data_source,
+      created_at, updated_at)
+    VALUES (@id, @project_id, @title, @description, @financial_impact, @root_cause,
+      @linked_indicators, @citation, @confidence, @confidence_level, @data_source,
+      @created_at, @updated_at)
+  `)
+  const rows = [
+    { title: 'Churn rate in crestere (3.2% la 5.1%)',
+      description: 'Rata de abandon crescuta Q4 2025. Cauza: lipsa features AI.',
+      financial_impact: 210000, root_cause: 'Lipsa capabilitatilor AI fata de competitori',
+      linked_indicators: JSON.stringify(['S1', 'T1']),
+      citation: 'Am pierdut 15 clienti in Q4 care au migrat la HubSpot.',
+      confidence: 0.85, confidence_level: 'HIGH', data_source: 'transcriere_whisper' },
+    { title: 'Tech debt — monolit blocat',
+      description: 'Arhitectura monolitica impiedica lansarea de features noi.',
+      financial_impact: 120000, root_cause: 'Decizie arhitecturala din 2019 nerevisitata',
+      linked_indicators: JSON.stringify(['T3', 'T2']),
+      citation: 'Fiecare feature noua dureaza de 3 ori mai mult.',
+      confidence: 0.9, confidence_level: 'HIGH', data_source: 'transcriere_whisper' },
+    { title: 'Zero competente AI in echipa',
+      description: 'Niciun membru cu experienta AI/ML. Recrutarea a esuat.',
+      financial_impact: null, root_cause: 'Piata competitiva talent AI, salarizare sub piata',
+      linked_indicators: JSON.stringify(['O2', 'O3']),
+      citation: 'Am postat 3 joburi de ML engineer anul trecut. Zero aplicanti.',
+      confidence: 0.8, confidence_level: 'HIGH', data_source: 'transcriere_whisper' },
+  ]
+  rows.forEach((p, i) => stmt.run({
+    id: `${SEED_PROJECT_ID}-prob-${i + 1}`, project_id: SEED_PROJECT_ID,
+    ...p, created_at: now, updated_at: now,
+  }))
+}
+
+function seedOpportunities(db: Database.Database, now: string): void {
+  const stmt = db.prepare(`
+    INSERT INTO Opportunity (id, project_id, title, type, ebit_impact_estimated, effort, risk,
+      citation, confidence, confidence_level, data_source, created_at, updated_at)
+    VALUES (@id, @project_id, @title, @type, @ebit_impact_estimated, @effort, @risk,
+      @citation, @confidence, @confidence_level, @data_source, @created_at, @updated_at)
+  `)
+  const rows = [
+    { title: 'AI lead scoring pentru CloudCRM', type: 'AI', ebit_impact_estimated: 85000,
+      effort: 'L', risk: 3,
+      citation: 'Clientii ne tot intreaba daca avem lead scoring automat.',
+      confidence: 0.7, confidence_level: 'MEDIUM', data_source: 'transcriere_whisper' },
+    { title: 'Chatbot AI support tier-1', type: 'automatizare', ebit_impact_estimated: 35000,
+      effort: 'M', risk: 2,
+      citation: '60% din tickete sunt aceleasi 20 de intrebari.',
+      confidence: 0.85, confidence_level: 'HIGH', data_source: 'transcriere_whisper' },
+    { title: 'Automatizare onboarding (5 zile la 1 zi)', type: 'automatizare',
+      ebit_impact_estimated: 45000, effort: 'M', risk: 2,
+      citation: 'Onboarding-ul dureaza cam o saptamana.',
+      confidence: 0.8, confidence_level: 'HIGH', data_source: 'transcriere_whisper' },
+    { title: 'Predictive churn analysis', type: 'AI', ebit_impact_estimated: 65000,
+      effort: 'L', risk: 3,
+      citation: 'Am pierdut 15 clienti in Q4. Nu am vazut-o venind.',
+      confidence: 0.65, confidence_level: 'MEDIUM', data_source: 'transcriere_whisper' },
+  ]
+  rows.forEach((o, i) => stmt.run({
+    id: `${SEED_PROJECT_ID}-opp-${i + 1}`, project_id: SEED_PROJECT_ID,
+    ...o, created_at: now, updated_at: now,
+  }))
+}
+
 function seedCloudServe(db: Database.Database): void {
-  const exists = db.prepare('SELECT 1 FROM Project WHERE id = ?').get(SEED_PROJECT_ID)
-  if (exists) return
+  const projectExists = db.prepare('SELECT 1 FROM Project WHERE id = ?').get(SEED_PROJECT_ID)
+  // Dacă proiectul există, verificăm dacă tabelele operaţionale (F4) au fost seeded.
+  // Dacă lipsesc rânduri pentru SEED_PROJECT_ID, vom popula doar acele tabele (backfill).
+  const needFullSeed = !projectExists
 
   const now = new Date().toISOString()
 
@@ -123,6 +224,16 @@ function seedCloudServe(db: Database.Database): void {
   `)
 
   const seedTx = db.transaction(() => {
+    if (!needFullSeed) {
+      // Backfill tabele F4 doar dacă lipsesc rânduri pentru proiectul seed.
+      const procCount = (db.prepare('SELECT COUNT(*) AS n FROM Process WHERE project_id = ?').get(SEED_PROJECT_ID) as { n: number }).n
+      const probCount = (db.prepare('SELECT COUNT(*) AS n FROM Problem WHERE project_id = ?').get(SEED_PROJECT_ID) as { n: number }).n
+      const oppCount  = (db.prepare('SELECT COUNT(*) AS n FROM Opportunity WHERE project_id = ?').get(SEED_PROJECT_ID) as { n: number }).n
+      if (procCount === 0) seedProcesses(db, now)
+      if (probCount === 0) seedProblems(db, now)
+      if (oppCount === 0) seedOpportunities(db, now)
+      return
+    }
     if (!db.prepare('SELECT 1 FROM Client WHERE id = ?').get(SEED_CLIENT_ID)) {
       insertClient.run({
         id: SEED_CLIENT_ID,
@@ -191,6 +302,10 @@ function seedCloudServe(db: Database.Database): void {
         created_at: now, updated_at: now,
       })
     }
+
+    seedProcesses(db, now)
+    seedProblems(db, now)
+    seedOpportunities(db, now)
   })
   seedTx()
 }

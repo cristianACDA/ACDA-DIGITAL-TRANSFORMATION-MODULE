@@ -1,51 +1,33 @@
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import ConfidenceField from '../../../components/ConfidenceField'
 import { useProjectContext } from '../../../context/ProjectContext'
-import { mockCTDOutput } from '../../../mocks/mock-cloudserve'
-
-interface Row {
-  titlu: string
-  tip: string
-  impact_ebit: string
-  efort: 'S' | 'M' | 'L' | 'XL'
-  risc: string
-  confidence: number
-  confidence_level: 'HIGH' | 'MEDIUM' | 'LOW'
-  data_source: string
-}
-
-function seedFromMock(cui: string | undefined): Row[] {
-  if (cui !== '44521837') return []
-  return mockCTDOutput.oportunitati.map((o) => ({
-    titlu: o.titlu,
-    tip: o.tip,
-    impact_ebit: String(o.impact_ebit_estimat ?? ''),
-    efort: o.efort,
-    risc: String(o.risc),
-    confidence: o.confidence.confidence,
-    confidence_level: o.confidence.confidence_level,
-    data_source: o.confidence.data_source ?? '',
-  }))
-}
+import type { Opportunity } from '../../../types/acda.types'
+import { EffortSize } from '../../../types/acda.types'
 
 const cellCls = 'w-full bg-white border border-[#E6E6E6] rounded px-2 py-1.5 text-xs focus:outline-none focus:border-[#071F80]'
 
-export const OPPORTUNITY_ROWS_KEY = 'cockpit-opportunities'
-
 export default function OpportunityMap() {
-  const { client } = useProjectContext()
-  const [rows, setRows] = useState<Row[]>(() => seedFromMock(client?.cui))
+  const { opportunities, setOpportunities, activeProjectId } = useProjectContext()
 
-  const update = (i: number, k: keyof Row, v: string) =>
-    setRows((p) => p.map((r, idx) => idx === i ? { ...r, [k]: v } as Row : r))
-  const addRow = () => setRows((p) => [...p, {
-    titlu: '', tip: '', impact_ebit: '', efort: 'M', risc: '3',
-    confidence: 0.3, confidence_level: 'LOW', data_source: 'manual',
-  }])
-  const delRow = (i: number) => setRows((p) => p.filter((_, idx) => idx !== i))
+  const update = (i: number, patch: Partial<Opportunity>) =>
+    setOpportunities(opportunities.map((r, idx) =>
+      idx === i ? { ...r, ...patch, updated_at: new Date().toISOString() } : r))
+
+  const addRow = () => {
+    const ts = new Date().toISOString()
+    setOpportunities([...opportunities, {
+      id: `${activeProjectId ?? 'local'}-opp-${Date.now()}`,
+      project_id: activeProjectId ?? '',
+      title: '', type: '', ebit_impact_estimated: undefined,
+      effort: EffortSize.M, risk: 3, citation: '',
+      confidence: 0.3, confidence_level: 'LOW', data_source: 'manual',
+      created_at: ts, updated_at: ts,
+    }])
+  }
+  const delRow = (i: number) => setOpportunities(opportunities.filter((_, idx) => idx !== i))
 
   const totalImpact = useMemo(() =>
-    rows.reduce((acc, r) => acc + (parseFloat(r.impact_ebit) || 0), 0), [rows])
+    opportunities.reduce((acc, r) => acc + (r.ebit_impact_estimated ?? 0), 0), [opportunities])
 
   return (
     <section className="flex flex-col gap-4">
@@ -62,29 +44,48 @@ export default function OpportunityMap() {
             </tr>
           </thead>
           <tbody>
-            {rows.map((r, i) => (
-              <tr key={i} className="border-t border-[#E6E6E6] align-top">
+            {opportunities.map((r, i) => (
+              <tr key={r.id} className="border-t border-[#E6E6E6] align-top">
                 <td className="px-3 py-2 min-w-[200px]">
-                  <ConfidenceField label="" value={r.titlu} onChange={(v) => update(i, 'titlu', v)}
-                    confidence={r.confidence} confidenceLevel={r.confidence_level} dataSource={r.data_source}
+                  <ConfidenceField label="" value={r.title}
+                    onChange={(v) => update(i, { title: v })}
+                    confidence={r.confidence ?? 0.3}
+                    confidenceLevel={r.confidence_level ?? 'LOW'}
+                    dataSource={r.data_source ?? 'manual'}
                     fieldId={`op.row${i}.titlu`} />
                 </td>
-                <td className="px-3 py-2"><input value={r.tip} onChange={(e) => update(i, 'tip', e.target.value)} className={cellCls} /></td>
-                <td className="px-3 py-2"><input type="number" value={r.impact_ebit} onChange={(e) => update(i, 'impact_ebit', e.target.value)} className={`${cellCls} text-right tabular-nums`} /></td>
+                <td className="px-3 py-2">
+                  <input value={r.type ?? ''}
+                    onChange={(e) => update(i, { type: e.target.value })} className={cellCls} />
+                </td>
+                <td className="px-3 py-2">
+                  <input type="number" value={r.ebit_impact_estimated ?? ''}
+                    onChange={(e) => update(i, { ebit_impact_estimated: e.target.value === '' ? undefined : Number(e.target.value) })}
+                    className={`${cellCls} text-right tabular-nums`} />
+                </td>
                 <td className="px-3 py-2 text-center">
-                  <select value={r.efort} onChange={(e) => update(i, 'efort', e.target.value as Row['efort'])} className={cellCls}>
-                    <option value="S">S</option><option value="M">M</option><option value="L">L</option><option value="XL">XL</option>
+                  <select value={r.effort ?? EffortSize.M}
+                    onChange={(e) => update(i, { effort: e.target.value as Opportunity['effort'] })}
+                    className={cellCls}>
+                    <option value="S">S</option><option value="M">M</option>
+                    <option value="L">L</option><option value="XL">XL</option>
                   </select>
                 </td>
-                <td className="px-3 py-2"><input type="number" min={1} max={5} value={r.risc} onChange={(e) => update(i, 'risc', e.target.value)} className={`${cellCls} text-right tabular-nums`} /></td>
-                <td className="px-3 py-2"><button onClick={() => delRow(i)} className="text-red-600 hover:text-red-800 text-sm" title="Şterge">×</button></td>
+                <td className="px-3 py-2">
+                  <input type="number" min={1} max={5} value={r.risk ?? ''}
+                    onChange={(e) => update(i, { risk: e.target.value === '' ? undefined : Number(e.target.value) })}
+                    className={`${cellCls} text-right tabular-nums`} />
+                </td>
+                <td className="px-3 py-2">
+                  <button onClick={() => delRow(i)} className="text-red-600 hover:text-red-800 text-sm" title="Şterge">×</button>
+                </td>
               </tr>
             ))}
-            {rows.length === 0 && (
+            {opportunities.length === 0 && (
               <tr><td colSpan={6} className="px-3 py-6 text-center text-xs text-[#0A2540]/40">Nicio oportunitate.</td></tr>
             )}
           </tbody>
-          {rows.length > 0 && (
+          {opportunities.length > 0 && (
             <tfoot>
               <tr className="bg-[#F6F9FC] border-t-2 border-[#E6E6E6]">
                 <td colSpan={2} className="px-3 py-2 text-xs font-bold text-[#0A2540]/60 uppercase tracking-wider">Total impact</td>

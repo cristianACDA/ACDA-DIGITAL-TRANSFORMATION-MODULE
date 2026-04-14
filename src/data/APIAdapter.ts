@@ -1,4 +1,7 @@
-import type { Project, EBITBaseline, MaturityIndicator } from '../types/acda.types'
+import type {
+  Project, EBITBaseline, MaturityIndicator,
+  Process, ProblemStatement, Opportunity,
+} from '../types/acda.types'
 import type { DataIngestionLayer, ProjectBundle, ProjectSummary } from './DataIngestionLayer'
 
 const BASE = '/api'
@@ -75,6 +78,32 @@ export class APIAdapter implements DataIngestionLayer {
 
   async saveMaturityScores(projectId: string, scores: MaturityIndicator[]): Promise<MaturityIndicator[]> {
     return http<MaturityIndicator[]>('PUT', `/projects/${encodeURIComponent(projectId)}/maturity`, scores)
+  }
+
+  // ── F4: Process / Problem / Opportunity ────────────────────────────────
+  async getProcesses(projectId: string): Promise<Process[]> {
+    return http<Process[]>('GET', `/projects/${encodeURIComponent(projectId)}/processes`)
+  }
+  async saveProcesses(projectId: string, items: Process[]): Promise<Process[]> {
+    return http<Process[]>('PUT', `/projects/${encodeURIComponent(projectId)}/processes`, items)
+  }
+  async getProblems(projectId: string): Promise<ProblemStatement[]> {
+    return http<ProblemStatement[]>('GET', `/projects/${encodeURIComponent(projectId)}/problems`)
+  }
+  async saveProblems(projectId: string, items: ProblemStatement[]): Promise<ProblemStatement[]> {
+    return http<ProblemStatement[]>('PUT', `/projects/${encodeURIComponent(projectId)}/problems`, items)
+  }
+  async getOpportunities(projectId: string): Promise<Opportunity[]> {
+    return http<Opportunity[]>('GET', `/projects/${encodeURIComponent(projectId)}/opportunities`)
+  }
+  async saveOpportunities(projectId: string, items: Opportunity[]): Promise<Opportunity[]> {
+    return http<Opportunity[]>('PUT', `/projects/${encodeURIComponent(projectId)}/opportunities`, items)
+  }
+
+  async ingestCTD(projectId: string, payload: unknown): Promise<ProjectBundle & {
+    processes: Process[]; problems: ProblemStatement[]; opportunities: Opportunity[];
+  }> {
+    return http('POST', `/projects/${encodeURIComponent(projectId)}/ingest`, payload)
   }
 }
 
