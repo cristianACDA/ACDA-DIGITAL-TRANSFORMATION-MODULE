@@ -82,6 +82,13 @@ export default function PreviewRaport() {
           >
             ⚡ Diagnostic 90s
           </Link>
+          <Link
+            to="/deliverables/strategy"
+            className="text-sm font-semibold px-4 py-2 rounded-lg border border-[#071F80] text-[#071F80] hover:bg-[#EEF3FF] transition-colors inline-flex items-center gap-2"
+            title="Strategie de transformare în 4 capitole narative."
+          >
+            🎯 Strategie 10min
+          </Link>
           <button
             type="button"
             onClick={handleExport}
