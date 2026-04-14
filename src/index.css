@@ -1,0 +1,10 @@
+@import "tailwindcss";
+
+@theme {
+  --color-acda-navy:   #071F80;
+  --color-acda-blue:   #0041FF;
+  --color-acda-green:  #48D56F;
+  --color-acda-dark:   #0A2540;
+  --color-acda-gray:   #F6F9FC;
+  --color-acda-border: #E6E6E6;
+}
