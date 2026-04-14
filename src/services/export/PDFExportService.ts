@@ -13,6 +13,11 @@ import type {
 } from '../../types/acda.types'
 import type { NarrativeEntry } from '../../layouts/CockpitLayout'
 import type { CockpitFieldEntry } from '../../layouts/CockpitLayout'
+import { MATURITY_INDICATORS } from '../../constants/acda.constants'
+
+const INDICATOR_META = new Map(
+  MATURITY_INDICATORS.map((m) => [m.id, { name: m.name, area: m.aria }]),
+)
 import { renderRadarChart, renderWaterfallChart } from '../../components/charts/pdfCharts'
 
 const ACDA_BLUE: [number, number, number] = [27, 58, 92]   // #1B3A5C
@@ -110,7 +115,7 @@ function addNarrative(doc: jsPDF, ctx: BuildCtx, pageNum: number) {
   if (!n?.text) return
   doc.setFont('Roboto', 'italic')
   doc.setTextColor(60)
-  addParagraph(doc, ctx, n.text)
+  addParagraph(doc, ctx, stripMarkdown(n.text))
   doc.setFont('Roboto', 'normal')
   doc.setTextColor(...TEXT_DARK)
 }
@@ -138,11 +143,29 @@ function embedImage(doc: jsPDF, ctx: BuildCtx, dataUrl: string, wMm: number, hMm
 // ─── Scoruri derivate ────────────────────────────────────────────────────────
 
 function computeGlobalScore(inds: MaturityIndicator[]): number {
+  // Scor global pe scală 0..5 (D3). Media aritmetică a scorurilor valide.
   if (!inds.length) return 0
   const valid = inds.filter((i) => typeof i.score === 'number')
   if (!valid.length) return 0
   const sum = valid.reduce((s, i) => s + (i.score ?? 0), 0)
-  return Math.round((sum / valid.length) * 20) / 10  // score medie 0..5 → 0..10
+  return Math.round((sum / valid.length) * 100) / 100
+}
+
+function maturityLabel(score: number): string {
+  if (score >= 4.5) return 'LIDER'
+  if (score >= 3.5) return 'CONFORM'
+  if (score >= 2.5) return 'IN_PROGRES'
+  return 'NECONFORM'
+}
+
+/** Strip markdown uzual: `## Header` → `Header`, `**x**` → `x`, `*x*` → `x`. */
+function stripMarkdown(text: string): string {
+  return text
+    .split('\n')
+    .map((line) => line.replace(/^\s{0,3}#{1,6}\s+/, ''))
+    .join('\n')
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/(?<!\*)\*([^*\n]+)\*(?!\*)/g, '$1')
 }
 
 // ─── Secţiuni ────────────────────────────────────────────────────────────────
@@ -155,16 +178,19 @@ const SECTIONS: SectionDef[] = [
     build: (doc, ctx) => {
       addSectionHeading(doc, ctx, 'S01', 'Executive Summary')
       const { client, ebitBaseline } = ctx.input
+      const hasTarget = !!ebitBaseline?.ebit_target && ebitBaseline.ebit_target > 0
       addParagraph(doc, ctx,
         `Prezentul raport consolidează rezultatele evaluării de transformare digitală pentru ${ctx.clientName}. ` +
-        `Scorul global de maturitate ACDA este ${ctx.globalScore.toFixed(1)}/10, ` +
-        `iar ţinta EBIT stabilită ${fmt(ebitBaseline?.ebit_target, ' RON')} faţă de ${fmt(ebitBaseline?.ebit_current, ' RON')} baseline.`,
+        `Scorul global de maturitate ACDA este ${ctx.globalScore.toFixed(2)}/5 (${maturityLabel(ctx.globalScore)}), ` +
+        (hasTarget
+          ? `iar ţinta EBIT stabilită ${fmt(ebitBaseline!.ebit_target, ' RON')} faţă de ${fmt(ebitBaseline?.ebit_current, ' RON')} baseline.`
+          : `iar ţinta EBIT rămâne de stabilit (baseline ${fmt(ebitBaseline?.ebit_current, ' RON')}).`),
       )
       addKV(doc, ctx, [
         ['Client',       client?.company_name ?? '—'],
         ['Industrie',    client?.industry ?? '—'],
         ['CUI',          client?.cui ?? '—'],
-        ['Scor global',  `${ctx.globalScore.toFixed(1)} / 10`],
+        ['Scor global',  `${ctx.globalScore.toFixed(2)} / 5.0 · ${maturityLabel(ctx.globalScore)}`],
         ['Data raport',  new Date().toLocaleDateString('ro-RO')],
       ])
     },
@@ -196,14 +222,18 @@ const SECTIONS: SectionDef[] = [
       addSectionHeading(doc, ctx, 'S03', 'EBIT Baseline & Target')
       const e = ctx.input.ebitBaseline
       addNarrative(doc, ctx, 2)
-      const delta = (e?.ebit_target ?? 0) - (e?.ebit_current ?? 0)
+      const hasTarget = !!e?.ebit_target && e.ebit_target > 0
+      const targetStr = hasTarget ? fmt(e!.ebit_target, ' RON') : 'Nesetat'
+      const deltaStr = (hasTarget && typeof e?.ebit_current === 'number')
+        ? fmt(e!.ebit_target! - e!.ebit_current!, ' RON')
+        : '—'
       addKV(doc, ctx, [
         ['Cifra afaceri anuală', fmt(e?.annual_revenue, ' RON')],
         ['Costuri operaţionale', fmt(e?.operational_costs, ' RON')],
         ['EBIT curent',           fmt(e?.ebit_current, ' RON')],
         ['Marjă EBIT curent',     fmt(e?.ebit_margin_current, '%')],
-        ['EBIT ţintă',            fmt(e?.ebit_target, ' RON')],
-        ['Delta absolut',         fmt(delta, ' RON')],
+        ['EBIT ţintă',            targetStr],
+        ['Delta absolut',         deltaStr],
         ['IT spend',              fmt(e?.it_spend_current, ' RON')],
         ['Change mgmt spend',     fmt(e?.change_management_spend_current, ' RON')],
         ['Raport 1:1',            fmt(e?.rule_1_to_1_ratio)],
@@ -284,12 +314,12 @@ const SECTIONS: SectionDef[] = [
       addNarrative(doc, ctx, 3)
       const inds = ctx.input.maturityIndicators
       addParagraph(doc, ctx,
-        `Scor global: ${ctx.globalScore.toFixed(1)}/10 · ${inds.length}/9 indicatori înregistraţi.`,
+        `Scor global: ${ctx.globalScore.toFixed(2)}/5 · ${maturityLabel(ctx.globalScore)} · ${inds.length}/9 indicatori înregistraţi.`,
       )
 
       // Radar chart
       const radarData = inds.map((i) => ({
-        label: i.indicator_name || i.indicator_code,
+        label: i.indicator_name || INDICATOR_META.get(i.indicator_code)?.name || i.indicator_code,
         score: i.score ?? 0,
       }))
       if (radarData.length >= 3) {
@@ -303,13 +333,16 @@ const SECTIONS: SectionDef[] = [
           startY: ctx.y,
           margin: { left: ctx.marginX, right: ctx.marginX },
           head: [['Cod', 'Indicator', 'Arie', 'Scor', 'Conf.']],
-          body: inds.map((i) => [
-            i.indicator_code,
-            i.indicator_name ?? '—',
-            i.area ?? '—',
-            i.score != null ? i.score.toFixed(1) : '—',
-            i.confidence_level ?? '—',
-          ]),
+          body: inds.map((i) => {
+            const meta = INDICATOR_META.get(i.indicator_code)
+            return [
+              i.indicator_code,
+              i.indicator_name || meta?.name || i.indicator_code,
+              i.area || meta?.area || '—',
+              i.score != null ? i.score.toFixed(1) : '—',
+              i.confidence_level ?? '—',
+            ]
+          }),
           styles: { font: 'Roboto', fontSize: 9 },
           headStyles: { font: 'Roboto', fontStyle: 'bold', fillColor: ACDA_BLUE, textColor: 255 },
         })
@@ -437,7 +470,15 @@ const SECTIONS: SectionDef[] = [
       addSectionHeading(doc, ctx, 'S13', 'Financial Impact Model')
       const e = ctx.input.ebitBaseline
       const base = e?.ebit_current ?? 0
-      const target = e?.ebit_target ?? 0
+      const hasTarget = !!e?.ebit_target && e.ebit_target > 0
+      if (!hasTarget) {
+        addParagraph(doc, ctx,
+          `Model de impact: EBIT curent ${fmt(base, ' RON')}. Ţinta EBIT nu este încă stabilită — ` +
+          `completaţi pagina 2 a cockpitului pentru a activa modelul de impact.`,
+        )
+        return
+      }
+      const target = e!.ebit_target!
       const delta = target - base
       // Distribuim delta pe 3 pseudo-buckets (procese/tehnologie/oameni) —
       // aproximare până când iniţiativele sunt modelate granular.
@@ -495,7 +536,7 @@ const SECTIONS: SectionDef[] = [
         ['Delta EBIT ţintit',     fmt(delta, ' RON')],
         ['Cost pilot (est.)',     fmt(pilotCost, ' RON')],
         ['Durată pilot',          '12 săptămâni'],
-        ['Scor global pre-pilot', `${ctx.globalScore.toFixed(1)} / 10`],
+        ['Scor global pre-pilot', `${ctx.globalScore.toFixed(2)} / 5.0 · ${maturityLabel(ctx.globalScore)}`],
       ])
       addNarrative(doc, ctx, 11)
     },
@@ -539,9 +580,9 @@ function drawCover(doc: jsPDF, clientName: string, globalScore: number) {
   doc.setFontSize(10)
   doc.text('SCOR GLOBAL', pageW / 2, 166, { align: 'center' })
   doc.setFontSize(40)
-  doc.text(`${globalScore.toFixed(1)}`, pageW / 2, 188, { align: 'center' })
+  doc.text(`${globalScore.toFixed(2)}`, pageW / 2, 188, { align: 'center' })
   doc.setFontSize(10)
-  doc.text('/ 10', pageW / 2, 200, { align: 'center' })
+  doc.text(`/ 5.0 · ${maturityLabel(globalScore)}`, pageW / 2, 200, { align: 'center' })
 
   doc.setFont('Roboto', 'normal')
   doc.setFontSize(11)
