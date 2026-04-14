@@ -214,31 +214,39 @@ app.delete('/api/projects/:id', (req, res) => {
 app.put('/api/projects/:id/ebit', (req, res) => {
   const project_id = req.params.id
   if (!getProjectRow(project_id)) return res.status(404).json({ error: 'project not found' })
-  const incoming = req.body ?? {}
-  const existing = getEbitRow(project_id) as Record<string, unknown> | undefined
-  const created_at = (existing?.created_at as string) ?? now()
-  const row = nullify({
-    id: incoming.id ?? existing?.id ?? `ebit-${project_id}`,
+  const incoming = (req.body ?? {}) as Record<string, unknown>
+  const existing = (getEbitRow(project_id) ?? {}) as Record<string, unknown>
+
+  // MERGE behavior: pentru fiecare câmp, folosim incoming doar dacă a fost
+  // transmis explicit (prezent ca own property — fie cu valoare, fie null).
+  // Câmpurile absente din payload păstrează valoarea existentă. Asta împiedică
+  // paginile cockpit care editează un subset să şteargă celelalte câmpuri
+  // (ex.: pag. 2 nu atinge change_management_spend_current).
+  const pick = (key: string, fallback: unknown = null) =>
+    Object.prototype.hasOwnProperty.call(incoming, key)
+      ? incoming[key] ?? null
+      : (existing[key] ?? fallback)
+
+  const created_at = (existing.created_at as string | undefined) ?? now()
+  const row = {
+    id: (incoming.id as string | undefined) ?? (existing.id as string | undefined) ?? `ebit-${project_id}`,
     project_id,
-    annual_revenue: incoming.annual_revenue,
-    operational_costs: incoming.operational_costs,
-    ebit_current: incoming.ebit_current,
-    ebit_margin_current: incoming.ebit_margin_current,
-    ebit_target: incoming.ebit_target,
-    ebit_target_delta_percent: incoming.ebit_target_delta_percent,
-    it_spend_current: incoming.it_spend_current,
-    change_management_spend_current: incoming.change_management_spend_current,
-    rule_1_to_1_ratio: incoming.rule_1_to_1_ratio,
-    financial_notes: incoming.financial_notes,
-    confidence: incoming.confidence,
-    confidence_level: incoming.confidence_level,
-    data_source: incoming.data_source,
+    annual_revenue: pick('annual_revenue'),
+    operational_costs: pick('operational_costs'),
+    ebit_current: pick('ebit_current'),
+    ebit_margin_current: pick('ebit_margin_current'),
+    ebit_target: pick('ebit_target'),
+    ebit_target_delta_percent: pick('ebit_target_delta_percent'),
+    it_spend_current: pick('it_spend_current'),
+    change_management_spend_current: pick('change_management_spend_current'),
+    rule_1_to_1_ratio: pick('rule_1_to_1_ratio'),
+    financial_notes: pick('financial_notes'),
+    confidence: pick('confidence'),
+    confidence_level: pick('confidence_level'),
+    data_source: pick('data_source'),
     created_at,
     updated_at: now(),
-  }, ['annual_revenue', 'operational_costs', 'ebit_current', 'ebit_margin_current',
-      'ebit_target', 'ebit_target_delta_percent', 'it_spend_current',
-      'change_management_spend_current', 'rule_1_to_1_ratio', 'financial_notes',
-      'confidence', 'confidence_level', 'data_source'])
+  }
   upsertEbit.run(row)
   res.json(getEbitRow(project_id))
 })
