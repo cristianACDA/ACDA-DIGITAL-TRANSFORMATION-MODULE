@@ -2,13 +2,17 @@ import express from 'express'
 import cors from 'cors'
 import type Database from 'better-sqlite3'
 import { initDatabase } from '../database/init.js'
+import { createGDriveRouter } from './gdrive.js'
 
 const PORT = Number(process.env.PORT ?? 3001)
 const db: Database.Database = initDatabase()
 
 const app = express()
 app.use(cors())
-app.use(express.json({ limit: '2mb' }))
+// Payload-urile de upload PDF ajung la ~2-5 MB base64; majoram limita.
+app.use(express.json({ limit: '25mb' }))
+
+app.use('/api/gdrive', createGDriveRouter())
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 

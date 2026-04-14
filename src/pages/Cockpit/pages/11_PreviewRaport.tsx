@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useProjectContext } from '../../../context/ProjectContext'
 import { useCockpit } from '../../../layouts/CockpitLayout'
 import { PDFExportService } from '../../../services/export/PDFExportService'
+import { GDriveUploadService } from '../../../services/gdrive/GDriveUploadService'
 
 interface Section {
   cod: string
@@ -17,6 +18,14 @@ export default function PreviewRaport() {
   const { fieldsByPage, statuses, narratives } = useCockpit()
   const [exporting, setExporting] = useState(false)
   const [exportError, setExportError] = useState<string | null>(null)
+  const [gdriveConfigured, setGdriveConfigured] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const [uploadResult, setUploadResult] = useState<{ pdfLink: string; jsonLink: string } | null>(null)
+  const [uploadMessage, setUploadMessage] = useState<string | null>(null)
+
+  useEffect(() => {
+    GDriveUploadService.status().then((s) => setGdriveConfigured(s.configured))
+  }, [])
 
   const fieldsOnPage = (n: number) => Object.values(fieldsByPage[n] ?? {}).length
   const validatedOf = (n: number) => statuses[n] === 'validat'
@@ -41,24 +50,67 @@ export default function PreviewRaport() {
 
   const completed = sections.filter((s) => s.complete).length
 
+  const buildInput = () => ({
+    client, project, ebitBaseline, maturityIndicators,
+    narratives, fieldsByPage, statuses,
+  })
+
   const handleExport = async () => {
     setExporting(true)
     setExportError(null)
     try {
-      await PDFExportService.download({
-        client,
-        project,
-        ebitBaseline,
-        maturityIndicators,
-        narratives,
-        fieldsByPage,
-        statuses,
-      })
+      await PDFExportService.download(buildInput())
     } catch (err) {
       console.error('[PreviewRaport] export PDF failed', err)
       setExportError(err instanceof Error ? err.message : 'Eroare necunoscută la generare PDF.')
     } finally {
       setExporting(false)
+    }
+  }
+
+  const handleUploadToDrive = async () => {
+    setUploading(true)
+    setExportError(null)
+    setUploadResult(null)
+    setUploadMessage(null)
+    try {
+      const input = buildInput()
+      const clientName = client?.company_name ?? 'Client'
+      // Generăm PDF-ul o dată şi-l folosim şi local (download) şi upload.
+      const pdfBlob = await PDFExportService.generate(input)
+
+      // Download local (comportament identic cu export normal).
+      const date = new Date().toISOString().slice(0, 10)
+      const url = URL.createObjectURL(pdfBlob)
+      const a = document.createElement('a')
+      const slug = clientName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+      a.href = url; a.download = `acda-raport-${slug}-${date}.pdf`
+      document.body.appendChild(a); a.click(); document.body.removeChild(a)
+      setTimeout(() => URL.revokeObjectURL(url), 1000)
+
+      const status = await GDriveUploadService.status()
+      if (!status.configured) {
+        setUploadMessage('GDrive neconfigurat — fişierul a fost salvat local.')
+        return
+      }
+
+      const { pdf, json } = await GDriveUploadService.uploadReportBundle(
+        clientName,
+        pdfBlob,
+        {
+          exportedAt: new Date().toISOString(),
+          client, project, ebitBaseline,
+          maturityIndicators, narratives, fieldsByPage, statuses,
+        },
+        date,
+      )
+      setUploadResult({ pdfLink: pdf.link, jsonLink: json.link })
+      setUploadMessage('Upload complet în CTD/{client}/ — link-uri mai jos.')
+    } catch (err) {
+      console.error('[PreviewRaport] upload GDrive failed', err)
+      setExportError(err instanceof Error ? err.message : 'Upload GDrive a eşuat.')
+    } finally {
+      setUploading(false)
     }
   }
 
@@ -109,8 +161,43 @@ export default function PreviewRaport() {
               <>📄 Exportă Raport PDF</>
             )}
           </button>
+          {gdriveConfigured && (
+            <button
+              type="button"
+              onClick={handleUploadToDrive}
+              disabled={uploading || exporting || !client}
+              title="Generează PDF + JSON şi le uploadează în CTD/{Client}/"
+              className={`text-sm font-semibold px-4 py-2 rounded-lg border transition-colors inline-flex items-center gap-2 ${
+                uploading || exporting || !client
+                  ? 'border-[#E6E6E6] bg-[#F6F9FC] text-[#0A2540]/40 cursor-not-allowed'
+                  : 'border-[#2E75B6] bg-white text-[#2E75B6] hover:bg-[#EEF3FF]'
+              }`}
+            >
+              {uploading ? (
+                <>
+                  <span className="w-3 h-3 border-2 border-[#2E75B6]/50 border-t-[#2E75B6] rounded-full animate-spin" />
+                  Se uploadează…
+                </>
+              ) : (
+                <>☁ Uploadează în Drive</>
+              )}
+            </button>
+          )}
         </div>
       </div>
+
+      {uploadMessage && !uploadResult && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 text-sm text-[#071F80]">
+          {uploadMessage}
+        </div>
+      )}
+      {uploadResult && (
+        <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3 text-sm text-green-800 flex flex-col gap-1">
+          <strong>✓ Upload Drive complet</strong>
+          <a href={uploadResult.pdfLink} target="_blank" rel="noreferrer" className="text-[#071F80] hover:underline">📄 Raport PDF →</a>
+          <a href={uploadResult.jsonLink} target="_blank" rel="noreferrer" className="text-[#071F80] hover:underline">🗃 Date JSON →</a>
+        </div>
+      )}
 
       {exportError && (
         <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-2 text-sm text-red-700">

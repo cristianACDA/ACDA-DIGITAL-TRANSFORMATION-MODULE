@@ -40,3 +40,7 @@ architecture_plan.html
 
 database/acda.db
 database/*.db-*
+
+# P6-T2: Google Drive credentials — NU commita niciodată
+server/.gdrive-credentials.json
+.gdrive-credentials.json
