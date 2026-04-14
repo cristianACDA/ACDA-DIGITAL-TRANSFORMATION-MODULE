@@ -104,6 +104,10 @@ export default function Dashboard() {
             className="bg-white border border-[#071F80] text-[#071F80] text-sm font-semibold px-4 py-2 rounded-lg hover:bg-[#EEF3FF] transition-colors inline-flex items-center gap-2">
             🎯 Strategie 10min
           </Link>
+          <Link to="/deliverables/ai-readiness"
+            className="bg-white border border-[#071F80] text-[#071F80] text-sm font-semibold px-4 py-2 rounded-lg hover:bg-[#EEF3FF] transition-colors inline-flex items-center gap-2">
+            🤖 AI Readiness
+          </Link>
           <Link to="/cockpit"
             className="bg-[#071F80] text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-[#0A2540] transition-colors inline-flex items-center gap-2">
             📋 Deschide Cockpit →

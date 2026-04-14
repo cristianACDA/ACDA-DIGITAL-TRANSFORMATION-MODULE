@@ -141,6 +141,13 @@ export default function PreviewRaport() {
           >
             🎯 Strategie 10min
           </Link>
+          <Link
+            to="/deliverables/ai-readiness"
+            className="text-sm font-semibold px-4 py-2 rounded-lg border border-[#071F80] text-[#071F80] hover:bg-[#EEF3FF] transition-colors inline-flex items-center gap-2"
+            title="AI Readiness Score per use case — 4 criterii."
+          >
+            🤖 AI Readiness
+          </Link>
           <button
             type="button"
             onClick={handleExport}

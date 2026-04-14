@@ -9,6 +9,7 @@ import CockpitPage from './pages/Cockpit/CockpitPage'
 import ValidationPage from './pages/Cockpit/ValidationPage'
 import Diagnostic90s from './pages/ClientDeliverables/Diagnostic90s'
 import Strategy10min from './pages/ClientDeliverables/Strategy10min'
+import AIReadiness from './pages/ClientDeliverables/AIReadiness'
 
 const NAV_ITEMS = [
   { to: '/dashboard', label: 'Dashboard',         icon: '◉' },
@@ -72,6 +73,7 @@ export default function App() {
         </Route>
         <Route path="/deliverables/diagnostic" element={<Diagnostic90s />} />
         <Route path="/deliverables/strategy"   element={<Strategy10min />} />
+        <Route path="/deliverables/ai-readiness" element={<AIReadiness />} />
         <Route path="*"          element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </div>
