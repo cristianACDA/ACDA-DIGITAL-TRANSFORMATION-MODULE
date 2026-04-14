@@ -7,10 +7,17 @@ const SRC = { confidence: 0.7, confidenceLevel: 'MEDIUM' as const, dataSource: '
 function fmt(n: number | undefined | null): string {
   return typeof n === 'number' ? String(n) : ''
 }
-function num(v: string): number | undefined {
-  if (v.trim() === '') return undefined
-  const n = parseFloat(v)
-  return Number.isFinite(n) ? n : undefined
+/**
+ * Merge numeric form field cu valoarea persistată:
+ * - form gol → păstrează existing (NU suprascrie cu undefined)
+ * - form non-numeric → păstrează existing
+ * - form numeric valid → foloseşte valoarea nouă
+ * Asta previne ştergerea ebit_target etc. când formul nu e încă hidratat.
+ */
+function mergeField(formVal: string, existing: number | undefined | null): number | undefined {
+  if (formVal.trim() === '') return existing ?? undefined
+  const n = parseFloat(formVal)
+  return Number.isFinite(n) ? n : (existing ?? undefined)
 }
 
 export default function EBITBaselinePage() {
@@ -70,14 +77,14 @@ export default function EBITBaselinePage() {
     }
     setEbitBaseline({
       ...base,
-      annual_revenue:            num(form.annual_revenue),
-      operational_costs:         num(form.operational_costs),
-      ebit_current:              num(form.ebit_current),
-      ebit_margin_current:       num(form.ebit_margin_current),
-      it_spend_current:          num(form.it_spend_current),
-      ebit_target:               num(form.ebit_target),
-      ebit_target_delta_percent: num(form.ebit_target_delta),
-      financial_notes:           form.financial_notes || undefined,
+      annual_revenue:            mergeField(form.annual_revenue,      ebitBaseline?.annual_revenue),
+      operational_costs:         mergeField(form.operational_costs,   ebitBaseline?.operational_costs),
+      ebit_current:              mergeField(form.ebit_current,        ebitBaseline?.ebit_current),
+      ebit_margin_current:       mergeField(form.ebit_margin_current, ebitBaseline?.ebit_margin_current),
+      it_spend_current:          mergeField(form.it_spend_current,    ebitBaseline?.it_spend_current),
+      ebit_target:               mergeField(form.ebit_target,         ebitBaseline?.ebit_target),
+      ebit_target_delta_percent: mergeField(form.ebit_target_delta,   ebitBaseline?.ebit_target_delta_percent),
+      financial_notes:           form.financial_notes.trim() === '' ? ebitBaseline?.financial_notes : form.financial_notes,
       updated_at: now,
     })
     // Intenţionat fără `ebitBaseline`/`setEbitBaseline` în deps — spread-ul pe
