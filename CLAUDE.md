@@ -1,105 +1,89 @@
-# CLAUDE.md
+# CLAUDE.md — ACDA Digital Transformation Module (v2.0)
 
-Îndrumări pentru Claude Code când lucrează în acest repo.
+> Operativ pentru Claude Code (local Mac + Routines cloud). Sursa de adevăr pentru
+> context, guardrails și workflow pe repo-ul ACDA-DTM.
+>
+> Versiune: 2.0 · Ultima revizuire: 2026-04-18 · Sprint 0
+> Task list activ: vezi [TODO.md](./TODO.md)
 
-## Project Identity
-- Company: ACDA Consulting (acda.ro)
-- Agent Role: Development agent — singurul writer de cod
-- Product: ACDA Digital Transformation Module (Cockpit CTD + deliverables client)
+## 1. Identitate proiect
 
-## Stack
+**Company:** ACDA Consulting Group (acda.ro) — consultanță transformare digitală
+(DWP, CFE, CTD, LKW / Automark.Agency).
 
-- **Frontend:** React 19 + TypeScript + Vite 6 + Tailwind CSS 4 + react-router-dom 7
-- **Backend:** Express 5 + better-sqlite3 (SQLite local) — rulează pe port 3001, proxy Vite `/api`
-- **Export:** jsPDF + jspdf-autotable (grafice canvas→PNG)
-- **GDrive:** googleapis (OAuth2 refresh token), server-side only
-- **Package manager:** npm (preferat Bun la nivel de home, dar aici stay on npm — lock-file committed)
+**Produs:** **ACDA Digital Transformation Module** (ACDA-DTM) — aplicație web
+internă care conține:
+- **Cockpit CTD** (12 pagini) — unealta consultantului pentru diagnoză + strategie client
+- **3 deliverables client-facing** — Diagnostic 90s, Strategie 10min, AI Readiness
 
-## Commands
+**Rol în ACDA OS:** ACDA-DTM este **modulul de front-office** al stack-ului ACDA.
+Consumă output de la agenții OpenClaw (CTD / Qual / PreAnaliză / Oferta) prin
+contracte TypeScript în `src/contracts/`, dar **nu rulează agenții local** —
+aceștia trăiesc pe DGX Spark (accesibil via Tailscale; IP-uri în CLAUDE.md
+global, nu aici). Integrarea este one-way: DTM afișează, agenții produc.
 
-- `npm run db:init` — crează SQLite + seed CloudServe SRL
-- `npm run dev` — concurrently: server (3001) + client (5173)
-- `npm run build` — tsc build + vite build
-- `npm run typecheck` — `tsc --noEmit`
-- `npm run lint` — ESLint
+**Agent responsabil:** Claude Code (Opus 4.7, 1M context) — **singurul writer
+de cod** în acest repo. Cristian e CEO + reviewer, nu scrie cod direct.
 
-Primul setup: `npm install && npm run db:init && npm run dev`.
+**Status:** Sprint 0 (2026-04-18) — migrare CLAUDE.md v1 → v2, pregătire teren
+pentru Sprint 1 (POST /api/ingest + tabele DB lipsă, vezi TODO.md).
 
-## Architecture
+## 2. Target audience și tone
 
+**Primary reader (cine execută ce scrie aici):**
+1. **Claude Code local** (Mac, Opus 4.7, sesiune interactivă) — scrie cod,
+   rulează teste, pushează direct pe `main`.
+2. **Claude Code Routines cloud** (launched 2026-04-14) — aceeași bază de cod,
+   dar rulează headless cu timeout și limite proprii. Tot contextul de aici
+   trebuie să fie self-contained; nu se poate întreba Cristian mid-run.
+
+**Secondary reader:** viitori contributori umani (dacă proiectul iese din
+faza single-dev) sau agenți terți care fac review.
+
+**Tone:** tehnic-direct. Presupune cititor competent (cunoaște React, TS, SQL,
+Express). Nu explică concepte de bază. NU are onboarding hand-holding. Dar e
+structurat clar, cu anchor-uri explicite, ca să poată fi preluat de cineva nou
+fără sesiune cu Cristian.
+
+**Limba:** Română pentru narativ + explicații. Engleză pentru nume tehnice,
+comenzi, identificatori. Path-uri și cod — as-is.
+
+## 3. Stack tehnic
+
+### Runtime și limbă
+| Zonă | Tehnologie | Notă |
+|---|---|---|
+| Limbaj | TypeScript strict | `noUnusedLocals`, `noUnusedParameters` |
+| Package manager | **npm** | `package-lock.json` committed. Nu `bun` aici (deși e preferat la nivel de home). |
+| Node | LTS (>= 20) | platforma trebuie să meargă pe orice Node modern; nu pin la o versiune specifică |
+
+### Frontend (`src/`)
+- **React 19** + **Vite 6** — build + HMR
+- **Tailwind CSS 4** — stil
+- **react-router-dom 7** — navigație Cockpit + Deliverables
+- **jsPDF + jspdf-autotable** — export PDF client-side (grafice: canvas → PNG)
+
+### Backend (`server/`)
+- **Express 5** — 10 endpoint-uri REST sub `/api/*`
+- **better-sqlite3** — DB locală (`database/acda.db`), parameterized queries
+  (`@name`), NIMIC interpolat
+- **googleapis** — OAuth2 refresh token pentru `/api/gdrive/upload`
+  (server-side only, nu se expune client)
+- Port **3001**, proxy Vite `/api → :3001`
+
+### Persistență (`database/`)
+- **SQLite** locală: `database/acda.db` (gitignored)
+- Schema live: 5 tabele (Client, Project, EBITBaseline, MaturityIndicator,
+  MaturityScore)
+- Tabele lipsă (Process / Problem / Opportunity / BusinessCase / Initiative /
+  StrategyPillar / RoadmapPhase / ReportSection) — momentan în
+  `src/mocks/mock-cloudserve.ts`. Migrare programată în Sprint 1.
+
+### Structura curentă a codului
+Pentru arborele complet, rulează:
+```bash
+tree src/ server/ database/ -L 3 -I 'node_modules|dist'
 ```
-src/
-├── pages/
-│   ├── Dashboard.tsx · ClientIntake.tsx · MaturityRisk.tsx
-│   ├── Cockpit/pages/01..12_*.tsx     — 12 pagini cockpit CTD
-│   └── ClientDeliverables/            — 3 deliverables client-facing
-│       ├── Diagnostic90s.tsx          — 3 întrebări vizuale, 90s
-│       ├── Strategy10min.tsx          — 4 capitole narative, 10min
-│       └── AIReadiness.tsx            — Use case scoring + Risk Map + Adoption Path
-├── layouts/CockpitLayout.tsx          — nav 12 pagini + timer + validare
-├── context/ProjectContext.tsx         — state global pe proiect activ
-├── data/APIAdapter.ts                 — wrapper peste fetch('/api/...')
-├── services/
-│   ├── export/                        — PDFExportService (raport 15 secţiuni),
-│   │                                    Diagnostic90sPDF, Strategy10minPDF, AIReadinessPDF
-│   ├── gdrive/GDriveUploadService.ts  — client wrapper peste /api/gdrive/*
-│   └── narrative/NarrativeService.ts  — template SCQAPS + fallback
-├── components/
-│   ├── charts/                        — pdfCharts (radar, waterfall) + riskMapCanvas
-│   ├── CockpitNav, CockpitProgress, ConfidenceField, ConfidenceSummary,
-│   │   ConsultantTimer, EBITWidget, NarrativePanel, ProjectSelector, ValidationGate
-├── contracts/agent-contracts.ts       — 4 interfeţe output agenţi + PAGINI_COCKPIT +
-│                                        StatusProiect + StatusPagina
-├── constants/acda.constants.ts        — 9 indicatori, ponderi arii, praguri, versiune
-├── types/acda.types.ts                — tipuri DB (Client, Project, EBITBaseline, …)
-├── utils/maturityCalculator.ts        — scoreO1..S3 + area/global + getMaturityLevel
-├── theme/levelStyles.ts               — mapare nivel → Tailwind classes
-└── mocks/mock-cloudserve.ts           — CloudServe SRL seed (probleme, oportunitati, ebit)
-
-server/
-├── index.ts       — 10 endpoint-uri REST (clients, projects, ebit, maturity, status)
-└── gdrive.ts      — router /api/gdrive — status + upload OAuth2 Drive
-
-database/
-├── schema.sql     — 5 tabele: Client, Project, EBITBaseline, MaturityIndicator, MaturityScore
-└── init.ts        — crează DB dacă lipseşte + seed CloudServe (status CIORNA)
-```
-
-## Status proiect
-
-Unificat cu `StatusProiect` din `contracts/agent-contracts.ts`:
-`CIORNA → VALIDARE_CONSULTANT → ASTEAPTA_APROBARE → APROBAT → REVIEW_OPUS → FINALIZAT → ARHIVAT`
-(plus `RESPINS` care întoarce la `CIORNA`). Default pentru proiect nou: `CIORNA`.
-
-## TODO — lipseşte încă
-
-- Tabele DB: `Process`, `Problem`, `Opportunity`, `BusinessCase`, `Initiative`,
-  `StrategyPillar`, `RoadmapPhase`, `ReportSection` — deocamdată live doar în mocks.
-- Endpoint `POST /api/ingest` — primeşte output agent (CTD/Qual/PreAnaliză/Oferta).
-- CRUD server-side pentru procese / probleme / oportunităţi.
-- Integrare reală cu Palace / Ollama pentru narrative LLM (fallback template e live).
-
-## Conventions
-
-- **SQL:** doar parameterized queries (`@name`), nimic interpolat. better-sqlite3.
-- **TypeScript:** strict mode, `noUnusedLocals`, `noUnusedParameters`.
-- **JSDoc:** funcţii publice din `utils/` — obligatoriu.
-- **Confidenţialitate:** NU commita `.env`, `server/.gdrive-credentials.json`, `database/*.db`.
-- **Mock data:** `mock-cloudserve.ts` este sursa de adevăr pentru schema outputurilor agenţilor —
-  orice schimbare a contractului se reflectă în mock + seed simultan.
-- **Deliverables client:** max budgets de cuvinte respectate (Diagnostic 150, Strategie 1500).
-
-## Workflow
-
-- **Push direct pe `main`** — Cristian e singurul developer pe faza de construcţie.
-  Nu se deschid PR-uri draft. Commit mesaj scurt cu codul taskului la început (ex. `C3-T2: …`).
-- Pipeline ACDA global (`/review → /cso → /qa → /ship`) se aplică abia când repo-ul intră
-  în producţie cu multi-contributor setup.
-
-## Boundaries
-
-- NU instala pachete sistem sau `sudo`.
-- NU face request-uri HTTP externe fără instrucţiune explicită (singura excepţie:
-  `googleapis` din `/api/gdrive/upload`, cu credenţiale din env).
-- NU atinge `database/acda.db` direct — mereu prin SQL din `init.ts` sau endpoint-uri server.
-- NU accesa alte repo-uri ACDA (OpenFang, Paperclip, SOUL.md) din acest modul.
+CLAUDE.md nu mai ține tree-ul hardcodat — în v1 a drift-at și a devenit
+inutil. Anchor-urile cheie (ce e `context/`, ce e `services/`, etc.) vin în
+secțiunea de arhitectură, mai jos.
