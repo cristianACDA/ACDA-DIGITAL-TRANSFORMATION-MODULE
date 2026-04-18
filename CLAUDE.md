@@ -213,3 +213,102 @@ poate merge local.
 - Anthropic Claude (Opus / Sonnet / Haiku) e singurul cloud model folosit.
 - **Zero OpenAI, Gemini, modele cloud chineze** (DeepSeek, Qwen cloud,
   Zhipu etc.). Pentru fallback non-Anthropic → DGX local. Niciodată cloud terț.
+
+## 6. Arhitectura repo — anchor-uri cheie
+
+Pentru tree-ul complet rulează `tree src/ server/ database/ -L 3`. Mai jos,
+ce înseamnă fiecare folder — nu unde se află fișierele, ci **rolul lor în
+sistem** și unde faci modificări când ai un tip anume de task.
+
+### 6.1 `src/` — frontend React
+
+| Anchor | Rol | Când atingi |
+|---|---|---|
+| `pages/Dashboard.tsx`, `pages/ClientIntake.tsx`, `pages/MaturityRisk.tsx` | Pagini top-level (nu-Cockpit) | Funcționalitate dashboard / intake flow |
+| `pages/Cockpit/CockpitPage.tsx`, `PageShell.tsx`, `ValidationPage.tsx` | Shell-ul Cockpit | Navigație + frame comun celor 12 pagini |
+| `pages/Cockpit/pages/01..12_*.tsx` | Cele 12 pagini ale consultantului (ClientOverview → ChestionarClient) | Schimbi ordinea / conținutul cockpit-ului |
+| `pages/ClientDeliverables/` | 3 deliverable-uri client (Diagnostic90s, Strategy10min, AIReadiness) | Format/narativ livrabil final |
+| `layouts/CockpitLayout.tsx` | Nav sticky + timer + ValidationGate | Reguli de trecere între pagini |
+| `context/ProjectContext.tsx` | State global pe proiectul activ | Schimbi forma datelor proiect live |
+| `contracts/agent-contracts.ts` | **Contract TypeScript** output agenți OpenClaw (CTD/Qual/PreAnaliză/Oferta), `PAGINI_COCKPIT`, `StatusProiect`, `StatusPagina` | Orice breaking change la formatul output agent; `contracts/README.md` explică semantica |
+| `constants/acda.constants.ts` | 9 indicatori maturitate, ponderi arii, praguri nivel | Când metodologia ACDA se schimbă |
+| `types/acda.types.ts`, `types/confidence.ts` | Tipuri DB + tipuri confidence scoring | După orice `schema.sql` change; `confidence.ts` = pattern confidence levels |
+| `data/APIAdapter.ts` | Wrapper `fetch('/api/...')` — intrare/ieșire REST | Add endpoint nou; centralizează error handling |
+| `data/DataIngestionLayer.ts` | Layer-ul de ingestie pentru surse externe (output agent → state) | `POST /api/ingest` (Sprint 1) iese prin aici |
+| `services/export/` | `PDFExportService` (15 secțiuni), `Diagnostic90sPDF`, `Strategy10minPDF`, `AIReadinessPDF` | Format raport exportat |
+| `services/gdrive/GDriveUploadService.ts` | Client wrapper peste `/api/gdrive/*` | Flow upload raport în Drive client |
+| `services/narrative/NarrativeService.ts` | Template SCQAPS + fallback LLM | Integrarea narativ LLM (Palace/Ollama) |
+| `components/charts/` | `pdfCharts` (radar, waterfall), `riskMapCanvas` | Grafice noi în PDF |
+| `components/` (restul) | `CockpitNav`, `CockpitProgress`, `ConfidenceField`, `ConfidenceIndicator`, `ConfidenceSummary`, `ConsultantTimer`, `EBITWidget`, `NarrativePanel`, `ProjectSelector`, `ValidationGate` | Reusable UI building blocks |
+| `utils/maturityCalculator.ts` | `scoreO1..S3`, agregare area/global, `getMaturityLevel` — **JSDoc obligatoriu** | Când ponderile se schimbă |
+| `theme/levelStyles.ts` | Mapare nivel maturitate → Tailwind classes | UI tweak |
+| `mocks/mock-cloudserve.ts` | Seed CloudServe SRL (probleme, oportunități, EBIT) — **sursa de adevăr pentru shape-ul output-urilor agent** până când DB acoperă tabelele lipsă | Orice schimbare de contract agent se reflectă aici ȘI în seed simultan |
+
+### 6.2 `server/` — backend Express
+
+| Anchor | Rol |
+|---|---|
+| `server/index.ts` | 10 endpoint-uri REST: clients, projects, EBIT, maturity, status. Parameterized queries (`@name`). Port 3001. |
+| `server/gdrive.ts` | Router `/api/gdrive` — status + upload OAuth2. Folosește `.gdrive-credentials.json` (gitignored). |
+
+### 6.3 `database/` — persistență
+
+| Anchor | Rol |
+|---|---|
+| `database/schema.sql` | 5 tabele: Client, Project, EBITBaseline, MaturityIndicator, MaturityScore |
+| `database/init.ts` | Creează DB dacă lipsește + seed CloudServe (status `CIORNA`). Idempotent. |
+| `database/acda.db[-shm/-wal]` | SQLite runtime files — **gitignored, nu le atinge direct** |
+
+### 6.4 Fluxul de date (resumé)
+```
+Agent OpenClaw (DGX)  →  POST /api/ingest (Sprint 1)  →  DataIngestionLayer
+                                                              │
+ProjectContext  ◄──  APIAdapter  ◄──  server/index.ts  ◄──  SQLite (acda.db)
+      │
+      ├─► Pagini Cockpit (01..12) — consultant interactiv
+      ├─► ClientDeliverables (Diagnostic/Strategie/AIReadiness) — export PDF
+      └─► services/gdrive → /api/gdrive/upload → Drive client (OAuth2)
+```
+
+## 7. Task Envelope (TE) workflow
+
+### 7.1 Ce e un TE
+Un **Task Envelope** este specificația executabilă a unui task frontier-grade:
+contract complet între Cristian (aprobator) și Claude Code (executor), astfel
+încât o sesiune — locală sau Routine cloud — poate rula end-to-end fără
+follow-up. Live la `docs/task-envelopes/TE-*.md`.
+
+Exemple existente (Sprint 0 / Val 1 FRONTIER):
+- `TE-CTD-FRONTIER-SCHEMA-001_v1_1.md` — migrare schema v1.2 → v1.3
+- `TE-CTD-FRONTIER-API-001_v1_1.md` — handler-e frontier + adapter bridge
+
+### 7.2 Anatomia unui TE (secțiuni canonice)
+Ordinea și denumirile de mai jos sunt normative — urmează-le când
+scrii/execuți TE-uri noi:
+
+1. **Header** — cod TE, versiune, dată, urgență, deadline, **executor** (Claude Code + path repo), **aprobare** (Cristian)
+2. **Changelog v{n-1} → v{n}** — ce s-a schimbat față de versiunea anterioară și de ce
+3. **Sumar** — 3-6 bullet-uri: ce se livrează
+4. **Decizii canonice aplicate** / **Dependențe externe** / **Out of scope** — ce presupuneri sunt fixate, ce trebuie să fie deja OK, ce NU rezolvă TE-ul ăsta
+5. **Fișiere afectate** — listă explicită path-uri; orice file touched în afara listei = halt
+6. **⚠️ PAS 0 — Validare pre-execuție** — comenzi diagnostic rulate *înainte* de orice modificare. Dacă realitatea diferă de ipoteza TE-ului → **STOP + addendum v{n+1}**, NU modificare silent
+7. **FAZA 1..N** — execuție pe faze cu timp alocat per fază, fiecare cu acceptance criteria explicit
+8. **Triplu Audit** — gate final (pre-activare / securitate / post-activare — vezi §4.5)
+9. **Ordine execuție** — secvența strictă dependință între faze
+10. **gstack pipeline (pre-merge)** — checklist `/review → /cso → /qa → /canary → /ship`
+11. **Blast Radius** — ce se rupe dacă TE-ul eșuează la jumătate
+12. **Reguli execuție Claude Code** — constrângeri specifice (ex. nu atinge fișiere X, cere confirmare la Y)
+13. **Referințe** — linkuri la SCHEMA-001, contracte, ADR-uri relevante
+14. **Livrabile finale (checklist consolidat)** — bifat manual de Cristian la aprobare
+
+### 7.3 Reguli de execuție
+- **Pas 0 = gate absolut.** Dacă un singur output din Pas 0 contrazice ipotezele TE, execuția se oprește și se produce un addendum v{n+1} înainte de orice cod nou.
+- **Versioning:** TE-urile sunt imutabile odată ce au un număr de versiune validat. Modificările merg în v1.1, v1.2 etc., cu changelog explicit — nu rescriere silent.
+- **Un TE = un commit series.** Commit-urile din execuție poartă în mesaj codul TE (`SCHEMA-001: faza 1 migration up`, `API-001: faza 3 handler cache`).
+- **Blast Radius este citibil înainte de execuție** — dacă nu înțelegi ce se rupe când TE-ul cade la mijloc, nu lansa.
+- **SCHEMA-001 e referința v1.1 canonică** pentru structura TE frontier — orice TE nou se modelează după el.
+
+### 7.4 Relație cu pipeline-ul gstack
+TE-ul specifică *ce* se face; gstack-ul (§4.4) specifică *cum se validează*.
+Ele sunt ortogonale: un TE fără gstack pre-merge e incomplet, un run gstack
+fără TE e doar quality gate pe cod ad-hoc.
