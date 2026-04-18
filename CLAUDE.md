@@ -88,6 +88,19 @@ CLAUDE.md nu mai ține tree-ul hardcodat — în v1 a drift-at și a devenit
 inutil. Anchor-urile cheie (ce e `context/`, ce e `services/`, etc.) vin în
 secțiunea de arhitectură, mai jos.
 
+### 3.5 Dev commands
+
+| Comandă | Efect |
+|---|---|
+| `npm install` | Instalare dependențe (prima dată sau după modificare `package.json`) |
+| `npm run db:init` | Creează `database/acda.db` + seed CloudServe SRL (idempotent) |
+| `npm run dev` | `concurrently` server (3001) + client Vite (5173); proxy `/api` |
+| `npm run build` | `tsc` build + `vite build` → `dist/` |
+| `npm run typecheck` | `tsc --noEmit` (obligatoriu înainte de commit) |
+| `npm run lint` | ESLint |
+
+**Primul setup:** `npm install && npm run db:init && npm run dev`.
+
 ## 4. Guardrails absolute
 
 Reguli non-negociabile. Violarea oricăreia = rollback + post-mortem, indiferent
@@ -269,6 +282,38 @@ ProjectContext  ◄──  APIAdapter  ◄──  server/index.ts  ◄──  SQ
       ├─► ClientDeliverables (Diagnostic/Strategie/AIReadiness) — export PDF
       └─► services/gdrive → /api/gdrive/upload → Drive client (OAuth2)
 ```
+
+### 6.5 Invarianți business
+
+Limite hard pentru livrabilele client. Respectate de `services/export/*PDF.ts`
+și validate manual de Cristian la aprobare. Orice schimbare trece prin TE
++ bump de `constants/acda.constants.ts` (versiune).
+
+| Deliverable | Țintă durată | Buget pagini |
+|---|---|---|
+| **C1 — Diagnostic 90s** (`Diagnostic90sPDF`) | 90 secunde citire | **3-5 pagini** |
+| **C2 — Strategie 10min** (`Strategy10minPDF`) | 10 minute citire | **8-12 pagini** |
+| **C3 — AI Readiness** (`AIReadinessPDF`) | 15-20 minute parcurgere | **15-25 pagini** |
+
+### 6.6 Status proiect — enum pe scurt
+
+Statusuri canonice flow proiect (SCHEMA-001 v1.1 → v1.3, 8 statusuri + RESPINS):
+
+| Status | Rol în flow |
+|---|---|
+| `CIORNĂ` | Start default; consultantul completează Cockpit-ul 01..12 |
+| `RUTINĂ_FRONTIER` | Routine cloud rulează frontier job pe datele proiect (nou în v1.3) |
+| `VALIDARE_CONSULTANT` | Consultant verifică output frontier înainte de a avansa (absoarbe vechiul `AȘTEAPTĂ_APROBARE`) |
+| `OFERTĂ_GENERATĂ` | Oferta comercială produsă și atașată proiectului |
+| `APROBAT` | Cristian / CEO a dat verdict pozitiv |
+| `REVIEW_OPUS` | Round de review Opus final pe raport înainte de livrare |
+| `FINALIZAT` | Raport livrat clientului, upload GDrive efectuat |
+| `ARHIVAT` | Proiect închis, păstrat read-only în DB |
+| `RESPINS` | Side-status: întoarce proiectul la `CIORNĂ` cu motiv consemnat |
+
+> **Pentru tranzițiile complete, validări Zod și semantica business completă:**
+> vezi `src/contracts/status-project.ts` (SCHEMA-001 v1.1+). CLAUDE.md
+> păstrează doar rezumatul ca să evite single-source drift.
 
 ## 7. Task Envelope (TE) workflow
 
