@@ -312,3 +312,75 @@ scrii/execuți TE-uri noi:
 TE-ul specifică *ce* se face; gstack-ul (§4.4) specifică *cum se validează*.
 Ele sunt ortogonale: un TE fără gstack pre-merge e incomplet, un run gstack
 fără TE e doar quality gate pe cod ad-hoc.
+
+## 8. Pattern-uri XML pentru prompt-uri standardizate
+
+**Status:** prescriptiv. Repo-ul n-a folosit XML-structured prompts până acum;
+secțiunea asta stabilește baseline-ul canonic pentru TE-uri, sesiuni Routine
+și orice prompt important scris de Cristian sau Claude Code de aici încolo.
+Patternurile fac promptul citibil pentru revizor (Cristian) și parsabil
+pentru agent (mai ales Routines cloud, unde structura reduce ambiguitate).
+
+### 8.1 Reguli de folosire
+- Tag-urile sunt **case-sensitive, snake_case**, închise corect.
+- Nu se amestecă markdown interior fără motiv — conținutul rămâne text plain sau listă.
+- Un prompt important folosește minim `<task>` + `<context>` + `<success_criteria>`.
+- Un TE de executat în Routine folosește minim `<task>` + `<context>` + `<constraints>` + `<success_criteria>` + `<blast_radius>`.
+
+### 8.2 Catalog (15 patterns)
+
+| Tag | Scop | Exemplu scurt |
+|---|---|---|
+| `<task>` | Ce se face, o propoziție imperativă. | `<task>Migrează schema v1.2 la v1.3 adăugând 10 coloane pe Project.</task>` |
+| `<context>` | Ce știe agentul despre sistem/repo/istoric. | `<context>ACDA-DTM pe branch main. Schema curentă la v1.2. Agenții OpenClaw rulează pe DGX.</context>` |
+| `<instructions>` | Pași concreți de urmat (ordonate). | `<instructions>1. Rulează Pas 0. 2. Scrie migration up. 3. Scrie rollback.</instructions>` |
+| `<constraints>` | Ce NU se face; limite hard. | `<constraints>Zero ALTER pe tabele existente fără backup. Zero DROP.</constraints>` |
+| `<thinking>` | Spațiu rezervat pentru reasoning intern înainte de output. | `<thinking>Verific întâi dacă coloana există deja ca să fac migration idempotent.</thinking>` |
+| `<examples>` | Exemple input→output pentru shape-ul dorit. | `<examples>input: "CIORNA" → output: {status:"CIORNA",canEdit:true}</examples>` |
+| `<output_format>` | Forma exactă a livrabilului. | `<output_format>Un fișier .sql + un changelog entry în CHANGELOG.md.</output_format>` |
+| `<reasoning>` | Justificare vizibilă a deciziilor (distinct de `<thinking>` care e intern). | `<reasoning>Am ales TEXT CHECK în loc de CREATE TYPE pentru compat SQLite.</reasoning>` |
+| `<input>` | Date concrete pe care agentul trebuie să le proceseze. | `<input>{"project_id":"abc","status":"CIORNA"}</input>` |
+| `<sources>` | Fișiere / documente / linkuri de consultat obligatoriu. | `<sources>docs/task-envelopes/TE-CTD-FRONTIER-SCHEMA-001_v1_1.md</sources>` |
+| `<self_check>` | Checklist pe care agentul îl verifică înainte de a livra (aliniat cu Pas 0 TE). | `<self_check>- Schema match? - Test pass? - Changelog updated?</self_check>` |
+| `<success_criteria>` | Ce trebuie să fie adevărat ca task-ul să fie considerat completat. | `<success_criteria>npm run typecheck PASS && migration rollback reversibil.</success_criteria>` |
+| `<anti_patterns>` | Erori tipice pe care agentul le evită activ. | `<anti_patterns>- Nu folosi git push --force. - Nu hardcoda parole inline.</anti_patterns>` |
+| `<audit>` | Info pentru Triple Audit Protocol (§4.5). | `<audit>Pre: typecheck+tests. Sec: gitleaks+npm audit. Post: smoke 15min.</audit>` |
+| `<blast_radius>` | Ce se rupe dacă task-ul eșuează la jumătate. | `<blast_radius>Migration up fără down → DB blocat la v1.25 → rollback manual obligatoriu.</blast_radius>` |
+
+### 8.3 Scheme minime
+- **Prompt ad-hoc Cristian → Claude local:** `<task>` + `<context>` + `<success_criteria>`.
+- **TE cloud Routine:** toate cele 15 sau subset motivat, documentat în v1.x al TE-ului.
+- **Review / audit:** `<task>` + `<sources>` + `<self_check>` + `<anti_patterns>`.
+
+## 9. Slash commands — catalog operațional
+
+10 comenzi active în flow-ul ACDA-DTM. Toate live în gstack skills
+(`~/.claude/skills/<name>/`). `/review → /cso → /qa → /canary → /ship` este
+pipeline-ul obligatoriu pre-land (§4.4); celelalte 5 sunt auxiliare, apelate
+pe cerere.
+
+### 9.1 Pipeline pre-land (5 — obligatorii)
+
+| Comandă | Scop | Exemplu scurt |
+|---|---|---|
+| `/review` | Diff review structural (SQL safety, LLM trust boundaries, edge cases) pe branch-ul curent vs base. | `/review` — înainte de orice push care atinge server/ sau database/. |
+| `/cso` | Audit security: secrete leaked, supply chain, OWASP, CI/CD pipeline. Mod daily (8/10) sau comprehensive. | `/cso` după adăugare de dependență sau OAuth scope nou. |
+| `/qa` | Test flow real în browser (UI) sau unit tests — iterează și repară. Pentru raport fără fix: `/qa-only`. | `/qa` după schimbări în `pages/Cockpit/` sau ClientDeliverables. |
+| `/canary` | Post-deploy monitoring (console errors, perf, screenshots) vs baseline pre-deploy. | `/canary` imediat după `/ship` pe task-uri care ating UI. |
+| `/ship` | Bundle: merge base, tests, review diff, bump VERSION, CHANGELOG, commit, push, PR. | `/ship` la închiderea unui TE — pe solo-dev pushează direct pe main. |
+
+### 9.2 Auxiliare (5 — pe cerere)
+
+| Comandă | Scop | Exemplu scurt |
+|---|---|---|
+| `/investigate` | Debug sistematic 4-phase: investigate → analyze → hypothesize → implement. Iron Law: fără fix fără root cause. | `/investigate "Export PDF dă NaN pe raport pag. 11"` — pentru orice bug reprodus. |
+| `/codex` | Second opinion independent via OpenAI Codex CLI. Trei moduri: `review` (diff), `challenge` (adversarial), `consult` (întrebare liberă). | `/codex review` pe TE-uri cu blast radius mare. |
+| `/checkpoint` | Salvează stare + decizii + work rămas; resume cross-session (util între faze TE lungi sau între local și Routine cloud). | `/checkpoint` la finalul fazei 3/5 dintr-un TE, înainte de pauză. |
+| `/careful` | Warnings înainte de comenzi destructive (rm -rf, DROP TABLE, force-push, git reset --hard). | `/careful` activ când lucrezi pe DGX sau atingi `database/`. |
+| `/health` | Dashboard compozit quality score (typecheck + lint + tests + dead code + shell lint), cu trending în timp. | `/health` la finalul unui sprint, pentru a vedea evoluția. |
+
+### 9.3 Ce NU folosim aici
+- `/init` — n-are sens, CLAUDE.md există.
+- `/land-and-deploy` — activ pe repo-uri cu deploy automat; ACDA-DTM n-are pipeline cloud de deploy la momentul v2.0.
+- `/design-*` — relevante pentru proiecte UI-heavy greenfield; ACDA-DTM are layout stabil.
+- Orice custom ACDA — la v2.0 nu există comenzi custom; dacă se creează, vor fi documentate aici cu bump de versiune CLAUDE.md.
