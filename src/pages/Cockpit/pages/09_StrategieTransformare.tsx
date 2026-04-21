@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useProjectContext } from '../../../context/ProjectContext'
 import { mockCTDOutput } from '../../../mocks/mock-cloudserve'
 
-const cellCls = 'w-full bg-white border border-[#E6E6E6] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#071F80]'
+const cellCls = 'w-full bg-white border border-[color:var(--color-border-subtle)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[color:var(--color-text-primary)]'
 
 function defaultPiloni(cui: string | undefined): string {
   if (cui !== '44521837') return ''
@@ -29,15 +29,15 @@ export default function StrategieTransformare() {
   return (
     <section className="flex flex-col gap-4">
       <div>
-        <label className="block text-xs font-medium text-[#0A2540]/60 mb-1.5">Viziune (orizont 3-5 ani)</label>
+        <label className="block text-xs font-medium text-[color:var(--color-text-body)]/60 mb-1.5">Viziune (orizont 3-5 ani)</label>
         <textarea rows={3} value={form.viziune} onChange={(e) => set('viziune')(e.target.value)} className={`${cellCls} resize-none`} />
       </div>
       <div>
-        <label className="block text-xs font-medium text-[#0A2540]/60 mb-1.5">Piloni strategici (derivaţi din top oportunităţi)</label>
+        <label className="block text-xs font-medium text-[color:var(--color-text-body)]/60 mb-1.5">Piloni strategici (derivaţi din top oportunităţi)</label>
         <textarea rows={5} value={form.piloni} onChange={(e) => set('piloni')(e.target.value)} className={`${cellCls} resize-none font-mono text-xs`} />
       </div>
       <div>
-        <label className="block text-xs font-medium text-[#0A2540]/60 mb-1.5">Principii directoare</label>
+        <label className="block text-xs font-medium text-[color:var(--color-text-body)]/60 mb-1.5">Principii directoare</label>
         <textarea rows={3} value={form.principii} onChange={(e) => set('principii')(e.target.value)} className={`${cellCls} resize-none`} />
       </div>
     </section>

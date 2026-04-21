@@ -70,7 +70,8 @@ export default function ConfidenceField({
 
   const sty = CONFIDENCE_STYLE[effectiveLevel]
 
-  const inputCls = `w-full bg-white border-2 rounded-lg px-3 py-2 text-sm text-[#0A2540] placeholder-[#0A2540]/30 focus:outline-none focus:ring-2 focus:ring-[#071F80]/10 transition-all ${sty.border}`
+  const inputCls = `w-full bg-card border border-border-subtle rounded-md px-3 py-2 text-[15px] font-mono text-text-body placeholder:text-text-muted focus:border-accent-primary focus:outline-none transition-colors`
+  void sty
 
   const renderInput = () => {
     if (type === 'textarea') {
@@ -100,25 +101,27 @@ export default function ConfidenceField({
   return (
     <div className="flex flex-col gap-1.5">
       <div className="flex items-center justify-between gap-2">
-        <label htmlFor={id} className="text-xs font-medium text-[#0A2540]/60">
+        <label htmlFor={id} className="text-[13px] font-medium text-text-secondary">
           {label}
         </label>
-        <div className="flex items-center gap-2">
-          {wasEdited && (
-            <button type="button"
-              onClick={() => onChange(originalValueRef.current)}
-              className="text-[10px] text-[#0A2540]/50 hover:text-[#071F80] underline">
-              ↶ resetare original
-            </button>
-          )}
+        {wasEdited && (
+          <button type="button"
+            onClick={() => onChange(originalValueRef.current)}
+            className="text-[10px] text-text-muted hover:text-accent-primary underline">
+            ↶ resetare original
+          </button>
+        )}
+      </div>
+      <div className="relative">
+        {renderInput()}
+        <span className="absolute top-2 right-2">
           <ConfidenceIndicator
             confidence={confidence}
             confidenceLevel={effectiveLevel}
             dataSource={dataSource}
           />
-        </div>
+        </span>
       </div>
-      {renderInput()}
     </div>
   )
 }

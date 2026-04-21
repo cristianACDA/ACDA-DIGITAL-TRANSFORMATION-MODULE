@@ -35,15 +35,15 @@ const EMPTY_FORM: EBITForm = {
 
 // ─── Shared classes ───────────────────────────────────────────────────────────
 
-const inputCls = "w-full bg-white border border-[#E6E6E6] rounded-lg px-3 py-2.5 text-sm text-[#0A2540] placeholder-[#0A2540]/30 focus:outline-none focus:border-[#071F80] focus:ring-1 focus:ring-[#071F80]/10 transition-all"
+const inputCls = "w-full bg-white border border-[color:var(--color-border-subtle)] rounded-lg px-3 py-2.5 text-sm text-[color:var(--color-text-body)] placeholder-[color:var(--color-text-body)]/30 focus:outline-none focus:border-[color:var(--color-text-primary)] focus:ring-1 focus:ring-[color:var(--color-text-primary)]/10 transition-all"
 
 // ─── Field components ─────────────────────────────────────────────────────────
 
 function FieldLabel({ children, required }: { children: string; required?: boolean }) {
   return (
-    <label className="block text-xs font-medium text-[#0A2540]/60 mb-1.5">
+    <label className="block text-xs font-medium text-[color:var(--color-text-body)]/60 mb-1.5">
       {children}
-      {required && <span className="text-red-600 ml-0.5">*</span>}
+      {required && <span className="text-accent-warning ml-0.5">*</span>}
     </label>
   )
 }
@@ -64,12 +64,12 @@ function ReadOnlyField({ label, value, highlight }: {
   label: string; value: string; highlight?: 'green' | 'amber' | 'red' | 'blue'
 }) {
   const colorMap = {
-    green: 'text-green-700  border-green-200  bg-green-50',
-    amber: 'text-amber-700  border-amber-200  bg-amber-50',
-    red:   'text-red-700    border-red-200    bg-red-50',
-    blue:  'text-[#071F80]  border-blue-200   bg-blue-50',
+    green: 'text-accent-success  border-border-subtle  bg-[color:rgba(34,197,94,0.08)]',
+    amber: 'text-accent-warning  border-border-subtle  bg-[color:rgba(245,158,11,0.08)]',
+    red:   'text-accent-warning    border-border-subtle    bg-[color:rgba(245,158,11,0.08)]',
+    blue:  'text-[color:var(--color-text-primary)]  border-border-subtle   bg-subtle',
   }
-  const cls = highlight ? colorMap[highlight] : 'text-[#0A2540] border-[#E6E6E6] bg-[#F6F9FC]'
+  const cls = highlight ? colorMap[highlight] : 'text-[color:var(--color-text-body)] border-[color:var(--color-border-subtle)] bg-[color:var(--color-page)]'
   return (
     <div>
       <FieldLabel>{label}</FieldLabel>
@@ -81,9 +81,9 @@ function ReadOnlyField({ label, value, highlight }: {
 function SectionDivider({ children }: { children: string }) {
   return (
     <div className="flex items-center gap-3 my-2">
-      <div className="flex-1 h-px bg-[#E6E6E6]" />
-      <span className="text-xs font-semibold text-[#0A2540]/40 uppercase tracking-widest">{children}</span>
-      <div className="flex-1 h-px bg-[#E6E6E6]" />
+      <div className="flex-1 h-px bg-[color:var(--color-border-subtle)]" />
+      <span className="text-xs font-semibold text-[color:var(--color-text-body)]/40 uppercase tracking-widest">{children}</span>
+      <div className="flex-1 h-px bg-[color:var(--color-border-subtle)]" />
     </div>
   )
 }
@@ -189,28 +189,28 @@ export default function ClientIntake() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F6F9FC] text-[#0A2540] px-4 py-6">
+    <div className="min-h-screen bg-[color:var(--color-page)] text-[color:var(--color-text-body)] px-4 py-6">
       <div className="max-w-3xl mx-auto flex flex-col gap-6">
 
         {/* Page header */}
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="text-xs text-[#0A2540]/40 uppercase tracking-widest mb-1">Evaluare ACDA</p>
-            <h1 className="text-2xl font-black" style={{ color: '#071F80' }}>Date Client & EBIT Baseline</h1>
-            <p className="text-sm text-[#0A2540]/60 mt-1">
+            <p className="text-xs text-[color:var(--color-text-body)]/40 uppercase tracking-widest mb-1">Evaluare ACDA</p>
+            <h1 className="text-2xl font-semibold text-text-primary">Date Client & EBIT Baseline</h1>
+            <p className="text-sm text-[color:var(--color-text-body)]/60 mt-1">
               Completează datele financiare pentru a activa calculele automate ACDA.
             </p>
           </div>
           <button onClick={applyScenario}
-            className="flex-shrink-0 text-xs border border-[#E6E6E6] hover:border-[#071F80] text-[#0A2540]/60 hover:text-[#071F80] px-3 py-2 rounded-lg transition-all font-medium bg-white">
+            className="flex-shrink-0 text-xs border border-[color:var(--color-border-subtle)] hover:border-[color:var(--color-text-primary)] text-[color:var(--color-text-body)]/60 hover:text-[color:var(--color-text-primary)] px-3 py-2 rounded-lg transition-all font-medium bg-white">
             ▶ Scenariu Demo
           </button>
         </div>
 
         {/* EBIT Baseline card */}
-        <section className="bg-white border border-[#E6E6E6] rounded-xl p-6 flex flex-col gap-4 shadow-sm">
-          <h2 className="text-xs font-semibold text-[#0A2540]/50 uppercase tracking-widest flex items-center gap-2">
-            <span style={{ color: '#071F80' }}>◈</span> EBIT Baseline
+        <section className="bg-white border border-[color:var(--color-border-subtle)] rounded-lg p-6 flex flex-col gap-4 shadow-sm">
+          <h2 className="text-xs font-semibold text-[color:var(--color-text-body)]/50 uppercase tracking-widest flex items-center gap-2">
+            <span className="text-text-primary">◈</span> EBIT Baseline
           </h2>
 
           <SectionDivider>Date Financiare de Bază</SectionDivider>
@@ -253,9 +253,9 @@ export default function ClientIntake() {
               <input type="number" min={0} value={form.ebit_target}
                 placeholder={autoTarget > 0 ? String(Math.round(autoTarget)) : '0'}
                 onChange={(e) => { setTargetManuallyEdited(true); set('ebit_target')(e.target.value) }}
-                className="w-full bg-blue-50 border border-blue-200 rounded-lg px-3 py-2.5 text-sm text-[#071F80] placeholder-[#0A2540]/30 focus:outline-none focus:border-[#071F80] focus:ring-1 focus:ring-[#071F80]/10 transition-all font-bold tabular-nums" />
+                className="w-full bg-subtle border border-border-subtle rounded-lg px-3 py-2.5 text-sm text-[color:var(--color-text-primary)] placeholder-[color:var(--color-text-body)]/30 focus:outline-none focus:border-[color:var(--color-text-primary)] focus:ring-1 focus:ring-[color:var(--color-text-primary)]/10 transition-all font-bold tabular-nums" />
               {targetManuallyEdited && (
-                <p className="text-xs text-amber-700 mt-1">
+                <p className="text-xs text-accent-warning mt-1">
                   ✎ Valoare editată manual —{' '}
                   <button className="underline hover:text-amber-900" onClick={() => setTargetManuallyEdited(false)}>
                     resetează la calculat
@@ -268,22 +268,22 @@ export default function ClientIntake() {
           {/* Delta RON computed cards */}
           {ebitCur > 0 && ebitTarget > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-1">
-              <div className="rounded-lg p-4 border bg-[#F6F9FC] border-[#E6E6E6]">
-                <p className="text-xs text-[#0A2540]/50 mb-1.5 font-medium">EBIT Curent</p>
-                <p className="text-xl font-black tabular-nums text-[#0A2540]">
-                  {formatRON(ebitCur)} <span className="text-sm font-normal text-[#0A2540]/40">RON</span>
+              <div className="rounded-lg p-4 border bg-[color:var(--color-page)] border-[color:var(--color-border-subtle)]">
+                <p className="text-xs text-[color:var(--color-text-body)]/50 mb-1.5 font-medium">EBIT Curent</p>
+                <p className="text-xl font-semibold tabular-nums text-[color:var(--color-text-body)]">
+                  {formatRON(ebitCur)} <span className="text-sm font-normal text-[color:var(--color-text-body)]/40">RON</span>
                 </p>
               </div>
-              <div className="rounded-lg p-4 border bg-green-50 border-green-200">
-                <p className="text-xs text-[#0A2540]/50 mb-1.5 font-medium">EBIT Target</p>
-                <p className="text-xl font-black tabular-nums text-green-700">
-                  {formatRON(ebitTarget)} <span className="text-sm font-normal text-[#0A2540]/40">RON</span>
+              <div className="rounded-lg p-4 border bg-[color:rgba(34,197,94,0.08)] border-border-subtle">
+                <p className="text-xs text-[color:var(--color-text-body)]/50 mb-1.5 font-medium">EBIT Target</p>
+                <p className="text-xl font-semibold tabular-nums text-accent-success">
+                  {formatRON(ebitTarget)} <span className="text-sm font-normal text-[color:var(--color-text-body)]/40">RON</span>
                 </p>
               </div>
-              <div className={`rounded-lg p-4 border ${deltaRON >= 0 ? 'bg-amber-50 border-amber-200' : 'bg-red-50 border-red-200'}`}>
-                <p className="text-xs text-[#0A2540]/50 mb-1.5 font-medium">Delta Vizat</p>
-                <p className={`text-xl font-black tabular-nums ${deltaRON >= 0 ? 'text-amber-700' : 'text-red-700'}`}>
-                  {deltaRON >= 0 ? '+' : ''}{formatRON(deltaRON)} <span className="text-sm font-normal text-[#0A2540]/40">RON</span>
+              <div className={`rounded-lg p-4 border ${deltaRON >= 0 ? 'bg-[color:rgba(245,158,11,0.08)] border-border-subtle' : 'bg-[color:rgba(245,158,11,0.08)] border-border-subtle'}`}>
+                <p className="text-xs text-[color:var(--color-text-body)]/50 mb-1.5 font-medium">Delta Vizat</p>
+                <p className={`text-xl font-semibold tabular-nums ${deltaRON >= 0 ? 'text-accent-warning' : 'text-accent-warning'}`}>
+                  {deltaRON >= 0 ? '+' : ''}{formatRON(deltaRON)} <span className="text-sm font-normal text-[color:var(--color-text-body)]/40">RON</span>
                 </p>
               </div>
             </div>
@@ -296,14 +296,14 @@ export default function ClientIntake() {
             <textarea rows={3} value={form.financial_notes}
               placeholder="Observații, ipoteze de calcul, context financiar..."
               onChange={(e) => set('financial_notes')(e.target.value)}
-              className="w-full bg-white border border-[#E6E6E6] rounded-lg px-3 py-2.5 text-sm text-[#0A2540] placeholder-[#0A2540]/30 focus:outline-none focus:border-[#071F80] focus:ring-1 focus:ring-[#071F80]/10 transition-all resize-none" />
+              className="w-full bg-white border border-[color:var(--color-border-subtle)] rounded-lg px-3 py-2.5 text-sm text-[color:var(--color-text-body)] placeholder-[color:var(--color-text-body)]/30 focus:outline-none focus:border-[color:var(--color-text-primary)] focus:ring-1 focus:ring-[color:var(--color-text-primary)]/10 transition-all resize-none" />
           </div>
 
           {/* Context sync status */}
           <div className={`flex items-center gap-2 text-xs px-3 py-2 rounded-lg border ${
             revenue > 0 && ebitCur > 0
-              ? 'bg-green-50 border-green-200 text-green-700'
-              : 'bg-[#F6F9FC] border-[#E6E6E6] text-[#0A2540]/40'
+              ? 'bg-[color:rgba(34,197,94,0.08)] border-border-subtle text-accent-success'
+              : 'bg-[color:var(--color-page)] border-[color:var(--color-border-subtle)] text-[color:var(--color-text-body)]/40'
           }`}>
             <span>{revenue > 0 && ebitCur > 0 ? '✓' : '○'}</span>
             <span>

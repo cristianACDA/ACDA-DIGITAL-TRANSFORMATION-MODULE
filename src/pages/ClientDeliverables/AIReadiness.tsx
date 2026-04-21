@@ -28,9 +28,9 @@ const ACTION_TEMPLATES: Record<CriteriaKey, string> = {
 }
 
 function statusOf(score: number): { key: 'ready' | 'needs' | 'not'; label: string; bg: string; chip: string; text: string } {
-  if (score >= 3.5) return { key: 'ready', label: 'Ready',      bg: 'bg-green-50',  chip: 'bg-green-600',  text: 'text-green-700' }
-  if (score >= 2.0) return { key: 'needs', label: 'Needs Work', bg: 'bg-amber-50',  chip: 'bg-amber-500',  text: 'text-amber-700' }
-  return                  { key: 'not',   label: 'Not Ready',  bg: 'bg-red-50',    chip: 'bg-red-600',    text: 'text-red-700' }
+  if (score >= 3.5) return { key: 'ready', label: 'Ready',      bg: 'bg-[color:rgba(34,197,94,0.08)]',  chip: 'bg-accent-success',  text: 'text-accent-success' }
+  if (score >= 2.0) return { key: 'needs', label: 'Needs Work', bg: 'bg-[color:rgba(245,158,11,0.08)]',  chip: 'bg-accent-warning',  text: 'text-accent-warning' }
+  return                  { key: 'not',   label: 'Not Ready',  bg: 'bg-[color:rgba(245,158,11,0.08)]',    chip: 'bg-accent-danger',    text: 'text-accent-warning' }
 }
 
 function deriveScoresFromIndicators(indMap: Map<string, number>): Scores {
@@ -205,10 +205,10 @@ export default function AIReadiness() {
   if (!activeProjectId) {
     return (
       <div className="max-w-3xl mx-auto px-4 py-10">
-        <div className="bg-white border border-[#E6E6E6] rounded-xl p-8 text-center shadow-sm">
-          <h2 className="text-xl font-black text-[#071F80] mb-2">Niciun proiect selectat</h2>
-          <p className="text-sm text-[#0A2540]/60">
-            Alege un proiect din <Link to="/dashboard" className="text-[#071F80] font-semibold hover:underline">Dashboard</Link>.
+        <div className="bg-white border border-[color:var(--color-border-subtle)] rounded-lg p-8 text-center shadow-sm">
+          <h2 className="text-xl font-semibold text-[color:var(--color-text-primary)] mb-2">Niciun proiect selectat</h2>
+          <p className="text-sm text-[color:var(--color-text-body)]/60">
+            Alege un proiect din <Link to="/dashboard" className="text-[color:var(--color-text-primary)] font-semibold hover:underline">Dashboard</Link>.
           </p>
         </div>
       </div>
@@ -220,11 +220,11 @@ export default function AIReadiness() {
   return (
     <div className="max-w-6xl mx-auto px-4 py-6 flex flex-col gap-6">
       {/* Header */}
-      <div className="flex items-start justify-between gap-4 pb-4 border-b border-[#E6E6E6]">
+      <div className="flex items-start justify-between gap-4 pb-4 border-b border-[color:var(--color-border-subtle)]">
         <div>
-          <p className="text-xs text-[#071F80]/70 uppercase tracking-widest font-semibold">AI Readiness</p>
-          <h1 className="text-2xl font-black text-[#071F80] mt-1">{clientName}</h1>
-          <p className="text-sm text-[#0A2540]/60 mt-0.5">
+          <p className="text-xs text-[color:var(--color-text-primary)]/70 uppercase tracking-widest font-semibold">AI Readiness</p>
+          <h1 className="text-2xl font-semibold text-[color:var(--color-text-primary)] mt-1">{clientName}</h1>
+          <p className="text-sm text-[color:var(--color-text-body)]/60 mt-0.5">
             {useCases.length} use case-uri evaluate pe 4 criterii · scorurile pot fi suprascrise manual
           </p>
         </div>
@@ -233,7 +233,7 @@ export default function AIReadiness() {
           onClick={handleExport}
           disabled={exporting}
           className={`flex-shrink-0 text-sm font-semibold px-4 py-2 rounded-lg border transition-colors inline-flex items-center gap-2 ${
-            exporting ? 'border-[#E6E6E6] bg-[#F6F9FC] text-[#0A2540]/40 cursor-not-allowed' : 'border-[#071F80] bg-[#071F80] text-white hover:bg-[#0A2540]'
+            exporting ? 'border-[color:var(--color-border-subtle)] bg-[color:var(--color-page)] text-[color:var(--color-text-body)]/40 cursor-not-allowed' : 'border-[color:var(--color-text-primary)] bg-[color:var(--color-text-primary)] text-white hover:bg-[color:var(--color-text-body)]'
           }`}
         >
           {exporting ? 'Se generează…' : '📄 Exportă PDF'}
@@ -242,30 +242,30 @@ export default function AIReadiness() {
 
       {/* Use Case Scoring */}
       <section className="flex flex-col gap-4">
-        <h2 className="text-lg font-black text-[#071F80]">Use Case Scoring</h2>
+        <h2 className="text-lg font-semibold text-[color:var(--color-text-primary)]">Use Case Scoring</h2>
         {useCases.map((u) => {
           const hasOverride = overrides[u.titlu] && Object.keys(overrides[u.titlu]).length > 0
           return (
-            <article key={u.titlu} className={`rounded-xl border-2 border-[#E6E6E6] ${u.status.bg} overflow-hidden`}>
-              <div className="px-5 py-4 flex items-start justify-between gap-4 border-b border-[#E6E6E6]/70">
+            <article key={u.titlu} className={`rounded-lg border border-[color:var(--color-border-subtle)] ${u.status.bg} overflow-hidden`}>
+              <div className="px-5 py-4 flex items-start justify-between gap-4 border-b border-[color:var(--color-border-subtle)]/70">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="text-[10px] font-bold uppercase tracking-wider bg-white border border-[#E6E6E6] text-[#0A2540]/70 px-2 py-0.5 rounded">
+                    <span className="text-[10px] font-bold uppercase tracking-wider bg-white border border-[color:var(--color-border-subtle)] text-[color:var(--color-text-body)]/70 px-2 py-0.5 rounded">
                       {u.tip}
                     </span>
-                    <span className="text-[10px] text-[#0A2540]/50">Efort {u.efort}</span>
+                    <span className="text-[10px] text-[color:var(--color-text-body)]/50">Efort {u.efort}</span>
                     {hasOverride && (
-                      <button onClick={() => resetOverrides(u.titlu)} className="text-[10px] text-[#071F80] hover:underline">
+                      <button onClick={() => resetOverrides(u.titlu)} className="text-[10px] text-[color:var(--color-text-primary)] hover:underline">
                         reset manual
                       </button>
                     )}
                   </div>
-                  <h3 className="text-base font-bold text-[#071F80]">{u.titlu}</h3>
+                  <h3 className="text-base font-bold text-[color:var(--color-text-primary)]">{u.titlu}</h3>
                 </div>
                 <div className="flex items-center gap-3 flex-shrink-0">
                   <div className="text-right">
-                    <div className={`text-3xl font-black tabular-nums ${u.status.text}`}>{u.global.toFixed(1)}</div>
-                    <div className="text-[10px] text-[#0A2540]/50">/ 5.0</div>
+                    <div className={`text-3xl font-semibold tabular-nums ${u.status.text}`}>{u.global.toFixed(1)}</div>
+                    <div className="text-[10px] text-[color:var(--color-text-body)]/50">/ 5.0</div>
                   </div>
                   <span className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded text-white ${u.status.chip}`}>
                     {u.status.label}
@@ -279,23 +279,23 @@ export default function AIReadiness() {
                   const val = u.scores[meta.key]
                   const low = val < 3.0
                   return (
-                    <div key={meta.key} className="bg-white border border-[#E6E6E6] rounded-lg p-3">
-                      <p className="text-[10px] text-[#0A2540]/50 uppercase tracking-widest font-semibold">{meta.label}</p>
+                    <div key={meta.key} className="bg-white border border-[color:var(--color-border-subtle)] rounded-lg p-3">
+                      <p className="text-[10px] text-[color:var(--color-text-body)]/50 uppercase tracking-widest font-semibold">{meta.label}</p>
                       <div className="flex items-baseline gap-2 mt-1">
-                        <span className={`text-xl font-black tabular-nums ${low ? 'text-red-600' : 'text-[#071F80]'}`}>
+                        <span className={`text-xl font-semibold tabular-nums ${low ? 'text-accent-warning' : 'text-[color:var(--color-text-primary)]'}`}>
                           {val.toFixed(1)}
                         </span>
-                        <span className="text-xs text-[#0A2540]/40">/ 5</span>
+                        <span className="text-xs text-[color:var(--color-text-body)]/40">/ 5</span>
                       </div>
                       <input
                         type="range"
                         min={0} max={5} step={0.1}
                         value={val}
                         onChange={(e) => setOverride(u.titlu, meta.key, Number(e.target.value))}
-                        className="w-full mt-2 accent-[#071F80]"
+                        className="w-full mt-2 accent-[color:var(--color-text-primary)]"
                         aria-label={`${meta.label} — ${meta.hint}`}
                       />
-                      <p className="text-[10px] text-[#0A2540]/50 mt-1">{meta.hint}</p>
+                      <p className="text-[10px] text-[color:var(--color-text-body)]/50 mt-1">{meta.hint}</p>
                     </div>
                   )
                 })}
@@ -304,11 +304,11 @@ export default function AIReadiness() {
               {/* Acţiuni */}
               {u.actiuni.length > 0 && (
                 <div className="px-5 pb-4">
-                  <p className="text-xs font-bold text-[#071F80] uppercase tracking-widest mb-2">Acţiuni recomandate</p>
+                  <p className="text-xs font-bold text-[color:var(--color-text-primary)] uppercase tracking-widest mb-2">Acţiuni recomandate</p>
                   <ul className="flex flex-col gap-1.5">
                     {u.actiuni.map((a, i) => (
-                      <li key={i} className="text-sm text-[#0A2540] leading-relaxed flex gap-2">
-                        <span className="text-[#071F80] font-bold">→</span>
+                      <li key={i} className="text-sm text-[color:var(--color-text-body)] leading-relaxed flex gap-2">
+                        <span className="text-[color:var(--color-text-primary)] font-bold">→</span>
                         <span>{a}</span>
                       </li>
                     ))}
@@ -322,13 +322,13 @@ export default function AIReadiness() {
 
       {/* Risk Map */}
       <section className="flex flex-col gap-3">
-        <h2 className="text-lg font-black text-[#071F80]">Risk Map — probabilitate × impact</h2>
-        <div className="bg-white border border-[#E6E6E6] rounded-xl p-4">
+        <h2 className="text-lg font-semibold text-[color:var(--color-text-primary)]">Risk Map — probabilitate × impact</h2>
+        <div className="bg-white border border-[color:var(--color-border-subtle)] rounded-lg p-4">
           <RiskMapSVG useCases={useCases} hovered={hovered} setHovered={setHovered} />
-          <p className="text-xs text-[#0A2540]/60 mt-2 leading-relaxed">
-            Culori: <span className="text-green-700 font-semibold">verde</span> = risc ≤2 · {' '}
-            <span className="text-amber-700 font-semibold">galben</span> = risc 3 · {' '}
-            <span className="text-red-700 font-semibold">roşu</span> = risc ≥4.
+          <p className="text-xs text-[color:var(--color-text-body)]/60 mt-2 leading-relaxed">
+            Culori: <span className="text-accent-success font-semibold">verde</span> = risc ≤2 · {' '}
+            <span className="text-accent-warning font-semibold">galben</span> = risc 3 · {' '}
+            <span className="text-accent-warning font-semibold">roşu</span> = risc ≥4.
             Hover pe un punct pentru detalii.
           </p>
         </div>
@@ -336,8 +336,8 @@ export default function AIReadiness() {
 
       {/* Adoption Path */}
       <section className="flex flex-col gap-3">
-        <h2 className="text-lg font-black text-[#071F80]">Safe Adoption Path</h2>
-        <div className="bg-[#F6F9FC] border border-[#E6E6E6] rounded-xl p-4 text-sm text-[#0A2540] leading-relaxed">
+        <h2 className="text-lg font-semibold text-[color:var(--color-text-primary)]">Safe Adoption Path</h2>
+        <div className="bg-[color:var(--color-page)] border border-[color:var(--color-border-subtle)] rounded-lg p-4 text-sm text-[color:var(--color-text-body)] leading-relaxed">
           <p className="italic">{scqaps}</p>
         </div>
         <ol className="flex flex-col gap-3">
@@ -345,30 +345,30 @@ export default function AIReadiness() {
             const steps = adoptionPath.filter((s) => s.pas === p)
             if (steps.length === 0) return null
             const stepMeta = {
-              1: { label: 'Pas 1 · Quick wins', chip: 'bg-green-600',  timeline: 'Luna 1-3' },
-              2: { label: 'Pas 2 · Consolidare', chip: 'bg-amber-500', timeline: 'Luna 4-7' },
-              3: { label: 'Pas 3 · Extindere',   chip: 'bg-[#071F80]', timeline: 'Luna 8-12' },
+              1: { label: 'Pas 1 · Quick wins', chip: 'bg-accent-success',  timeline: 'Luna 1-3' },
+              2: { label: 'Pas 2 · Consolidare', chip: 'bg-accent-warning', timeline: 'Luna 4-7' },
+              3: { label: 'Pas 3 · Extindere',   chip: 'bg-[color:var(--color-text-primary)]', timeline: 'Luna 8-12' },
             }[p as 1 | 2 | 3]
             return (
-              <li key={p} className="bg-white border border-[#E6E6E6] rounded-xl overflow-hidden">
-                <div className="flex items-center gap-3 px-4 py-3 border-b border-[#E6E6E6] bg-[#F6F9FC]">
+              <li key={p} className="bg-white border border-[color:var(--color-border-subtle)] rounded-lg overflow-hidden">
+                <div className="flex items-center gap-3 px-4 py-3 border-b border-[color:var(--color-border-subtle)] bg-[color:var(--color-page)]">
                   <span className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded text-white ${stepMeta.chip}`}>
                     {stepMeta.label}
                   </span>
-                  <span className="text-xs text-[#0A2540]/60">{stepMeta.timeline}</span>
-                  <span className="text-xs text-[#0A2540]/40">· {steps.length} use case(s)</span>
+                  <span className="text-xs text-[color:var(--color-text-body)]/60">{stepMeta.timeline}</span>
+                  <span className="text-xs text-[color:var(--color-text-body)]/40">· {steps.length} use case(s)</span>
                 </div>
-                <ul className="divide-y divide-[#E6E6E6]">
+                <ul className="divide-y divide-[color:var(--color-border-subtle)]">
                   {steps.map((s) => (
                     <li key={s.useCaseTitlu} className="px-4 py-3">
                       <div className="flex items-center justify-between gap-3 mb-1">
-                        <h3 className="text-sm font-bold text-[#071F80]">{s.useCaseTitlu}</h3>
-                        <div className="flex items-center gap-3 text-xs text-[#0A2540]/70 tabular-nums">
+                        <h3 className="text-sm font-bold text-[color:var(--color-text-primary)]">{s.useCaseTitlu}</h3>
+                        <div className="flex items-center gap-3 text-xs text-[color:var(--color-text-body)]/70 tabular-nums">
                           <span>readiness <strong>{s.readiness.toFixed(1)}</strong></span>
                           <span>risc <strong>{s.risc.toFixed(1)}</strong></span>
                         </div>
                       </div>
-                      <p className="text-xs text-[#0A2540]/70"><strong>Prerequisite:</strong> {s.prerequisite}</p>
+                      <p className="text-xs text-[color:var(--color-text-body)]/70"><strong>Prerequisite:</strong> {s.prerequisite}</p>
                     </li>
                   ))}
                 </ul>
@@ -378,7 +378,7 @@ export default function AIReadiness() {
         </ol>
       </section>
 
-      <div className="text-center text-xs text-[#0A2540]/50 border-t border-[#E6E6E6] pt-4">
+      <div className="text-center text-xs text-[color:var(--color-text-body)]/50 border-t border-[color:var(--color-border-subtle)] pt-4">
         ACDA Consulting · Confidenţial
       </div>
     </div>
@@ -454,11 +454,11 @@ function RiskMapSVG({ useCases, hovered, setHovered }: RiskMapProps) {
         })}
       </svg>
       {hover && (
-        <div className="absolute top-2 right-2 bg-white border border-[#E6E6E6] rounded-lg shadow-lg px-3 py-2 text-xs max-w-[280px] pointer-events-none">
-          <p className="font-bold text-[#071F80] leading-snug mb-1">{hover.titlu}</p>
-          <p className="text-[#0A2540]/70">Risc: <strong>{hover.risc.toFixed(1)}/5</strong></p>
-          <p className="text-[#0A2540]/70">Impact EBIT: <strong>{hover.impactEbit.toLocaleString('ro-RO')} RON</strong></p>
-          <p className="text-[#0A2540]/70">AI Readiness: <strong>{hover.global.toFixed(1)}/5</strong></p>
+        <div className="absolute top-2 right-2 bg-white border border-[color:var(--color-border-subtle)] rounded-lg shadow-card px-3 py-2 text-xs max-w-[280px] pointer-events-none">
+          <p className="font-bold text-[color:var(--color-text-primary)] leading-snug mb-1">{hover.titlu}</p>
+          <p className="text-[color:var(--color-text-body)]/70">Risc: <strong>{hover.risc.toFixed(1)}/5</strong></p>
+          <p className="text-[color:var(--color-text-body)]/70">Impact EBIT: <strong>{hover.impactEbit.toLocaleString('ro-RO')} RON</strong></p>
+          <p className="text-[color:var(--color-text-body)]/70">AI Readiness: <strong>{hover.global.toFixed(1)}/5</strong></p>
         </div>
       )}
     </div>

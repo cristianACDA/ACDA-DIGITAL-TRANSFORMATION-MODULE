@@ -103,9 +103,9 @@ export default function EBITBaselinePage() {
         <ConfidenceField label="Buget IT curent (RON)" value={form.it_spend_current} onChange={set('it_spend_current')} type="number" {...SRC} fieldId="ebit.it_spend" />
         <ConfidenceField label="Delta target EBIT (%)" value={form.ebit_target_delta} onChange={set('ebit_target_delta')} type="number" {...SRC} fieldId="ebit.target_delta" />
         <ConfidenceField label="EBIT target (RON)" value={form.ebit_target} onChange={set('ebit_target')} type="number" {...SRC} fieldId="ebit.target" />
-        <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 flex flex-col justify-center">
-          <p className="text-xs text-amber-700/70 uppercase tracking-wider font-semibold">Delta calculat</p>
-          <p className="text-lg font-black tabular-nums text-amber-700">
+        <div className="bg-[color:rgba(245,158,11,0.08)] border border-border-subtle rounded-lg px-3 py-2 flex flex-col justify-center">
+          <p className="text-xs text-accent-warning/70 uppercase tracking-wider font-semibold">Delta calculat</p>
+          <p className="text-lg font-semibold tabular-nums text-accent-warning">
             {delta >= 0 ? '+' : ''}{delta.toLocaleString('ro-RO')} RON
           </p>
         </div>

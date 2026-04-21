@@ -11,19 +11,19 @@ export interface LevelStyle {
 
 export const LEVEL_STYLE: Record<ScoreThresholdKey, LevelStyle> = {
   NECONFORM: {
-    bar: 'bg-red-500', text: 'text-red-700', bg: 'bg-red-50', border: 'border-red-200',
-    chip: 'bg-red-50 border-red-200 text-red-700', label: 'Neconform',
+    bar: 'bg-accent-warning', text: 'text-accent-warning', bg: 'bg-[color:rgba(245,158,11,0.08)]', border: 'border-border-subtle',
+    chip: 'bg-[color:rgba(245,158,11,0.08)] border-border-subtle text-accent-warning', label: 'Neconform',
   },
   IN_PROGRES: {
-    bar: 'bg-amber-400', text: 'text-amber-700', bg: 'bg-amber-50', border: 'border-amber-200',
-    chip: 'bg-amber-50 border-amber-200 text-amber-700', label: 'În Progres',
+    bar: 'bg-accent-warning', text: 'text-accent-warning', bg: 'bg-[color:rgba(245,158,11,0.08)]', border: 'border-border-subtle',
+    chip: 'bg-[color:rgba(245,158,11,0.08)] border-border-subtle text-accent-warning', label: 'În Progres',
   },
   CONFORM: {
-    bar: 'bg-[#48D56F]', text: 'text-green-700', bg: 'bg-green-50', border: 'border-green-200',
-    chip: 'bg-green-50 border-green-200 text-green-700', label: 'Conform',
+    bar: 'bg-[color:var(--color-accent-success)]', text: 'text-accent-success', bg: 'bg-[color:rgba(34,197,94,0.08)]', border: 'border-border-subtle',
+    chip: 'bg-[color:rgba(34,197,94,0.08)] border-border-subtle text-accent-success', label: 'Conform',
   },
   LIDER: {
-    bar: 'bg-[#071F80]', text: 'text-[#071F80]', bg: 'bg-blue-50', border: 'border-blue-200',
-    chip: 'bg-blue-50 border-blue-200 text-[#071F80]', label: 'Lider',
+    bar: 'bg-[color:var(--color-text-primary)]', text: 'text-[color:var(--color-text-primary)]', bg: 'bg-subtle', border: 'border-border-subtle',
+    chip: 'bg-subtle border-border-subtle text-[color:var(--color-text-primary)]', label: 'Lider',
   },
 }

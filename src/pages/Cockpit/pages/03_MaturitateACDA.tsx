@@ -21,8 +21,8 @@ export default function MaturitateACDA() {
 
   if (maturityIndicators.length === 0) {
     return (
-      <div className="bg-[#F6F9FC] border border-dashed border-[#E6E6E6] rounded-lg px-5 py-8 text-center">
-        <p className="text-sm text-[#0A2540]/60">
+      <div className="bg-[color:var(--color-page)] border border-dashed border-[color:var(--color-border-subtle)] rounded-lg px-5 py-8 text-center">
+        <p className="text-sm text-[color:var(--color-text-body)]/60">
           Niciun indicator încă. Completează evaluarea în pagina <strong>Maturitate &amp; Risc</strong>.
         </p>
       </div>
@@ -39,18 +39,18 @@ export default function MaturitateACDA() {
           const cfg = LEVEL_STYLE[getMaturityLevel(score)]
           const lvl = (ind.confidence_level ?? 'MEDIUM') as ConfidenceLevelExtended
           return (
-            <div key={ind.indicator_code} className={`border rounded-xl p-4 ${cfg.border} ${cfg.bg}`}>
+            <div key={ind.indicator_code} className={`border rounded-lg p-4 ${cfg.border} ${cfg.bg}`}>
               <div className="flex items-start justify-between gap-3 mb-3">
                 <div>
-                  <span className="font-mono text-xs font-bold bg-white border border-[#E6E6E6] text-[#0A2540]/60 px-1.5 py-0.5 rounded">
+                  <span className="font-mono text-xs font-bold bg-white border border-[color:var(--color-border-subtle)] text-[color:var(--color-text-body)]/60 px-1.5 py-0.5 rounded">
                     {ind.indicator_code}
                   </span>
-                  <h3 className="text-sm font-semibold text-[#0A2540] mt-1">{ind.indicator_name ?? ind.indicator_code}</h3>
-                  <p className="text-xs text-[#0A2540]/50">{ind.area ?? ''}</p>
+                  <h3 className="text-sm font-semibold text-[color:var(--color-text-body)] mt-1">{ind.indicator_name ?? ind.indicator_code}</h3>
+                  <p className="text-xs text-[color:var(--color-text-body)]/50">{ind.area ?? ''}</p>
                 </div>
                 <div className="text-right">
-                  <span className={`text-3xl font-black tabular-nums ${cfg.text}`}>{score.toFixed(1)}</span>
-                  <span className="text-[#0A2540]/30 text-xs ml-1">/ 5</span>
+                  <span className={`text-3xl font-semibold tabular-nums ${cfg.text}`}>{score.toFixed(1)}</span>
+                  <span className="text-[color:var(--color-text-body)]/30 text-xs ml-1">/ 5</span>
                 </div>
               </div>
               <ConfidenceField

@@ -64,13 +64,13 @@ export function useCockpit(): CockpitContextValue {
   return v
 }
 
-// ─── Status visuals ──────────────────────────────────────────────────────────
+// ─── Status visuals (dot color + label) ──────────────────────────────────────
 
-const STATUS_STYLE: Record<StatusPagina, { dot: string; label: string; chip: string }> = {
-  pre_populat: { dot: 'bg-[#071F80]',    label: 'Pre-populat', chip: 'bg-blue-50 border-blue-200 text-[#071F80]' },
-  in_review:   { dot: 'bg-amber-500',    label: 'În review',   chip: 'bg-amber-50 border-amber-200 text-amber-700' },
-  validat:     { dot: 'bg-green-500',    label: 'Validat',     chip: 'bg-green-50 border-green-200 text-green-700' },
-  skip:        { dot: 'bg-[#0A2540]/30', label: 'Skip',        chip: 'bg-[#F6F9FC] border-[#E6E6E6] text-[#0A2540]/50' },
+const STATUS_STYLE: Record<StatusPagina, { dot: string; label: string }> = {
+  pre_populat: { dot: 'bg-accent-warning', label: 'Pre-populat' },
+  in_review:   { dot: 'bg-accent-warning', label: 'În review'   },
+  validat:     { dot: 'bg-accent-success', label: 'Validat'     },
+  skip:        { dot: 'bg-subtle',         label: 'Skip'        },
 }
 
 // ─── Layout ──────────────────────────────────────────────────────────────────
@@ -92,7 +92,6 @@ export default function CockpitLayout() {
   const [timerSeconds, setTimerSeconds] = useState(0)
   const [timerPaused, setTimerPaused] = useState(false)
 
-  // Tick timer (1Hz) — porneşte automat la mount cockpit, opreşte la unmount.
   useEffect(() => {
     if (timerPaused) return
     const id = window.setInterval(() => setTimerSeconds((s) => s + 1), 1000)
@@ -132,8 +131,6 @@ export default function CockpitLayout() {
 
   const canValidate = useCallback((pn: number) => {
     const fields = Object.values(fieldsByPage[pn] ?? {})
-    // Regulă P3-T2: pagina poate fi "validat" doar dacă zero câmpuri LOW
-    // rămân needitate (un LOW editat devine MANUAL şi nu mai blochează).
     return fields.every((f) => f.confidence_level !== 'LOW')
   }, [fieldsByPage])
 
@@ -176,11 +173,11 @@ export default function CockpitLayout() {
   if (!activeProjectId) {
     return (
       <div className="max-w-3xl mx-auto px-4 py-10">
-        <div className="bg-white border border-[#E6E6E6] rounded-xl p-8 text-center shadow-sm">
-          <p className="text-5xl mb-3">📋</p>
-          <h2 className="text-xl font-black text-[#071F80] mb-2">Niciun proiect selectat</h2>
-          <p className="text-sm text-[#0A2540]/60">
-            Întoarce-te la <NavLink to="/dashboard" className="text-[#071F80] font-semibold hover:underline">Dashboard</NavLink>{' '}
+        <div className="bg-card border border-border-subtle rounded-lg p-8 text-center shadow-card">
+          <p className="text-5xl mb-3" aria-hidden="true">📋</p>
+          <h2 className="text-xl font-medium text-text-primary mb-2">Niciun proiect selectat</h2>
+          <p className="text-sm text-text-secondary">
+            Întoarce-te la <NavLink to="/dashboard" className="text-accent-primary font-medium hover:underline">Dashboard</NavLink>{' '}
             şi alege un proiect pentru a deschide cockpitul.
           </p>
         </div>
@@ -194,17 +191,17 @@ export default function CockpitLayout() {
 
   return (
     <CockpitCtx.Provider value={ctxValue}>
-      <div className="max-w-[1400px] mx-auto px-4 py-5 flex flex-col gap-4">
+      <div className="max-w-[1400px] mx-auto px-6 py-6 flex flex-col gap-5">
 
-        {/* Header — proiect + progress + summary */}
-        <div className="bg-white border border-[#E6E6E6] rounded-xl shadow-sm px-5 py-4 flex flex-col gap-3">
-          <div className="flex items-center justify-between gap-4">
+        {/* Header — proiect + progress + timer */}
+        <div className="bg-card border border-border-subtle rounded-lg shadow-card px-6 py-5 flex flex-col gap-4">
+          <div className="flex items-center justify-between gap-6">
             <div className="min-w-0">
-              <p className="text-xs text-[#0A2540]/40 uppercase tracking-widest mb-0.5">Cockpit CTD</p>
-              <h1 className="text-lg font-black text-[#071F80] truncate">
+              <p className="text-[11px] uppercase tracking-[0.14em] text-text-muted font-medium">Cockpit CTD</p>
+              <h1 className="text-[22px] font-medium text-text-primary tracking-tight truncate mt-0.5">
                 {client?.company_name ?? '—'}
               </h1>
-              <p className="text-xs text-[#0A2540]/60 truncate">{project?.name ?? '—'}</p>
+              <p className="text-sm text-text-secondary truncate mt-0.5">{project?.name ?? '—'}</p>
             </div>
             <div className="flex-1 max-w-md">
               <CockpitProgress />
@@ -212,13 +209,13 @@ export default function CockpitLayout() {
             <ConsultantTimer />
           </div>
 
-          <div className={`flex items-center justify-between gap-4 pt-3 border-t border-[#E6E6E6] ${isValidationRoute ? 'hidden' : ''}`}>
+          <div className={`flex items-center justify-between gap-4 pt-4 border-t border-border-subtle ${isValidationRoute ? 'hidden' : ''}`}>
             <div className="flex items-center gap-3">
-              <span className="text-xs font-semibold text-[#0A2540]/50 uppercase tracking-widest">
+              <span className="text-[11px] font-medium text-text-muted uppercase tracking-[0.14em]">
                 Pagina {currentPage}
               </span>
-              <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border inline-flex items-center gap-1.5 ${currentSty.chip}`}>
-                <span className={`w-1.5 h-1.5 rounded-full ${currentSty.dot}`} />
+              <span className="text-[11px] font-medium uppercase tracking-wider px-2.5 py-1 rounded-sm bg-subtle text-text-primary inline-flex items-center gap-1.5">
+                <span className={`w-1.5 h-1.5 rounded-full ${currentSty.dot}`} aria-hidden="true" />
                 {currentSty.label}
               </span>
               <ConfidenceSummary />
@@ -230,12 +227,12 @@ export default function CockpitLayout() {
               title={!currentCanValidate
                 ? 'Editează câmpurile LOW (roşii) înainte de a valida pagina.'
                 : 'Marchează pagina ca validată.'}
-              className={`text-xs font-semibold px-3 py-1.5 rounded-lg border transition-colors ${
+              className={`text-sm font-medium px-4 py-2 rounded-md transition-colors ${
                 !currentCanValidate
-                  ? 'border-[#E6E6E6] text-[#0A2540]/30 bg-white cursor-not-allowed'
+                  ? 'bg-subtle text-text-muted cursor-not-allowed'
                   : currentStatus === 'validat'
-                    ? 'border-green-200 bg-green-50 text-green-700 cursor-default'
-                    : 'border-[#071F80] bg-[#071F80] text-white hover:bg-[#0A2540]'
+                    ? 'bg-subtle text-accent-success cursor-default'
+                    : 'bg-accent-primary text-white hover:bg-accent-primary-hover'
               }`}
             >
               {currentStatus === 'validat' ? '✓ Validat' : 'Marchează validat'}
@@ -243,15 +240,15 @@ export default function CockpitLayout() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-5">
           {/* Sidebar 12 pagini */}
-          <aside className="bg-white border border-[#E6E6E6] rounded-xl shadow-sm overflow-hidden">
-            <div className="px-4 py-3 border-b border-[#E6E6E6]">
-              <h2 className="text-xs font-semibold text-[#0A2540]/50 uppercase tracking-widest">
+          <aside className="bg-card border border-border-subtle rounded-lg shadow-card overflow-hidden">
+            <div className="px-4 py-3">
+              <h2 className="text-[11px] font-medium text-text-muted uppercase tracking-[0.14em]">
                 Pagini cockpit
               </h2>
             </div>
-            <ul className="divide-y divide-[#E6E6E6]">
+            <ul className="px-2 pb-2 space-y-0.5">
               {PAGINI_COCKPIT.map((p) => {
                 const status = statuses[p.numar] ?? 'pre_populat'
                 const sty = STATUS_STYLE[status]
@@ -260,28 +257,30 @@ export default function CockpitLayout() {
                   <li key={p.numar}>
                     <NavLink
                       to={`/cockpit/${p.numar}`}
-                      className={`flex items-center gap-3 px-4 py-2.5 transition-colors ${
-                        isActive ? 'bg-[#EEF3FF] border-l-4 border-[#071F80]' : 'hover:bg-[#F6F9FC] border-l-4 border-transparent'
+                      className={`flex items-center gap-3 px-3 py-2.5 rounded-md transition-colors ${
+                        isActive
+                          ? 'bg-subtle border-l-2 border-accent-primary'
+                          : 'border-l-2 border-transparent hover:bg-subtle'
                       }`}
                       title={sty.label}
                     >
-                      <span className={`flex-shrink-0 w-6 h-6 rounded text-xs font-mono font-bold flex items-center justify-center border ${
-                        isActive ? 'bg-[#071F80] text-white border-[#071F80]' : 'bg-[#F6F9FC] border-[#E6E6E6] text-[#0A2540]/60'
+                      <span className={`flex-shrink-0 w-6 h-6 rounded-full text-xs font-medium flex items-center justify-center ${
+                        isActive ? 'bg-accent-primary text-white' : 'bg-subtle text-text-secondary'
                       }`}>
                         {p.numar}
                       </span>
                       <div className="flex-1 min-w-0">
-                        <p className={`text-sm font-medium truncate ${isActive ? 'text-[#071F80]' : 'text-[#0A2540]'}`}>
+                        <p className={`text-sm truncate ${isActive ? 'text-text-primary font-medium' : 'text-text-body'}`}>
                           {p.titlu_ro}
                         </p>
                         {p.optionala && (
-                          <span className="inline-block mt-0.5 text-[10px] font-semibold uppercase tracking-wider text-[#0A2540]/40 bg-[#F6F9FC] border border-[#E6E6E6] px-1.5 py-0.5 rounded">
+                          <span className="inline-block mt-0.5 text-[10px] font-medium uppercase tracking-wider text-text-muted">
                             opţional
                           </span>
                         )}
                       </div>
                       <span
-                        className={`flex-shrink-0 w-2.5 h-2.5 rounded-full ${sty.dot}`}
+                        className={`flex-shrink-0 w-1.5 h-1.5 rounded-full ${sty.dot}`}
                         aria-label={`status: ${sty.label}`}
                       />
                     </NavLink>
@@ -289,32 +288,32 @@ export default function CockpitLayout() {
                 )
               })}
             </ul>
-            <div className="border-t-2 border-[#E6E6E6]">
+            <div className="border-t border-border-subtle mt-1 pt-1 pb-2 px-2">
               <NavLink
                 to="/cockpit/validation"
-                className={`flex items-center gap-3 px-4 py-3 transition-colors ${
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-md transition-colors ${
                   isValidationRoute
-                    ? 'bg-[#EEF3FF] border-l-4 border-[#071F80]'
-                    : 'hover:bg-[#F6F9FC] border-l-4 border-transparent'
+                    ? 'bg-subtle border-l-2 border-accent-primary'
+                    : 'border-l-2 border-transparent hover:bg-subtle'
                 }`}
               >
-                <span className={`flex-shrink-0 w-6 h-6 rounded text-sm flex items-center justify-center ${
-                  isValidationRoute ? 'bg-[#071F80] text-white' : 'bg-amber-100 text-amber-700'
+                <span className={`flex-shrink-0 w-6 h-6 rounded-full text-xs flex items-center justify-center ${
+                  isValidationRoute ? 'bg-accent-primary text-white' : 'bg-subtle text-text-secondary'
                 }`}>
                   ✓
                 </span>
                 <div className="flex-1 min-w-0">
-                  <p className={`text-sm font-bold ${isValidationRoute ? 'text-[#071F80]' : 'text-[#0A2540]'}`}>
+                  <p className={`text-sm ${isValidationRoute ? 'text-text-primary font-medium' : 'text-text-body'}`}>
                     Validare finală
                   </p>
-                  <p className="text-[10px] text-[#0A2540]/50 uppercase tracking-wider">checklist + submit</p>
+                  <p className="text-[10px] text-text-muted uppercase tracking-wider">checklist + submit</p>
                 </div>
               </NavLink>
             </div>
           </aside>
 
           {/* Conţinut pagină */}
-          <main className="bg-white border border-[#E6E6E6] rounded-xl shadow-sm min-h-[60vh]">
+          <main className="bg-card border border-border-subtle rounded-lg shadow-card min-h-[60vh]">
             <Outlet />
           </main>
         </div>

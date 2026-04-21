@@ -21,7 +21,7 @@ export default function Prioritizare() {
 
   if (items.length === 0) {
     return (
-      <p className="text-sm text-[#0A2540]/60">
+      <p className="text-sm text-[color:var(--color-text-body)]/60">
         Nicio oportunitate disponibilă pentru prioritizare. Completează pagina 7 (Opportunity Map).
       </p>
     )
@@ -29,13 +29,13 @@ export default function Prioritizare() {
 
   return (
     <section className="flex flex-col gap-4">
-      <p className="text-xs text-[#0A2540]/50 italic">
+      <p className="text-xs text-[color:var(--color-text-body)]/50 italic">
         Sortat după impact EBIT descrescător. ROI estimat din cost prezumat per nivel efort
         (S=50k, M=150k, L=400k, XL=800k RON). Editabilitate fină în P3-T3+.
       </p>
-      <div className="overflow-x-auto border border-[#E6E6E6] rounded-lg">
+      <div className="overflow-x-auto border border-[color:var(--color-border-subtle)] rounded-lg">
         <table className="w-full text-sm">
-          <thead className="bg-[#F6F9FC] text-[10px] uppercase tracking-wider text-[#0A2540]/50">
+          <thead className="bg-[color:var(--color-page)] text-[10px] uppercase tracking-wider text-[color:var(--color-text-body)]/50">
             <tr>
               <th className="px-3 py-2 text-left">#</th>
               <th className="px-3 py-2 text-left">Oportunitate</th>
@@ -48,17 +48,17 @@ export default function Prioritizare() {
           </thead>
           <tbody>
             {items.map((o, i) => (
-              <tr key={o.titlu} className="border-t border-[#E6E6E6]">
-                <td className="px-3 py-2 font-mono text-xs text-[#0A2540]/50">#{i + 1}</td>
+              <tr key={o.titlu} className="border-t border-[color:var(--color-border-subtle)]">
+                <td className="px-3 py-2 font-mono text-xs text-[color:var(--color-text-body)]/50">#{i + 1}</td>
                 <td className="px-3 py-2 font-medium">{o.titlu}</td>
-                <td className="px-3 py-2 text-right tabular-nums text-green-700 font-bold">
+                <td className="px-3 py-2 text-right tabular-nums text-accent-success font-bold">
                   {(o.impact_ebit_estimat ?? 0).toLocaleString('ro-RO')}
                 </td>
                 <td className="px-3 py-2 text-center">
-                  <span className="text-xs font-mono bg-[#F6F9FC] border border-[#E6E6E6] px-1.5 py-0.5 rounded">{o.efort}</span>
+                  <span className="text-xs font-mono bg-[color:var(--color-page)] border border-[color:var(--color-border-subtle)] px-1.5 py-0.5 rounded">{o.efort}</span>
                 </td>
                 <td className="px-3 py-2 text-right tabular-nums">{o.costEst.toLocaleString('ro-RO')}</td>
-                <td className={`px-3 py-2 text-right tabular-nums font-bold ${o.roiPct >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                <td className={`px-3 py-2 text-right tabular-nums font-bold ${o.roiPct >= 0 ? 'text-accent-success' : 'text-accent-warning'}`}>
                   {o.roiPct.toFixed(0)}%
                 </td>
                 <td className="px-3 py-2 text-center">

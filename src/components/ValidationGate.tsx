@@ -91,12 +91,12 @@ export default function ValidationGate() {
 
   if (confirmation) {
     return (
-      <section className="bg-green-50 border border-green-200 rounded-xl p-6 flex flex-col gap-3">
+      <section className="bg-[color:rgba(34,197,94,0.08)] border border-border-subtle rounded-lg p-6 flex flex-col gap-3">
         <p className="text-2xl">✓</p>
-        <h2 className="text-lg font-black text-green-800">Trimis pentru aprobare</h2>
+        <h2 className="text-lg font-semibold text-accent-success">Trimis pentru aprobare</h2>
         <p className="text-sm text-green-900/80">{confirmation}</p>
         <button onClick={() => setActiveProjectId(null)}
-          className="self-start text-xs font-semibold border border-green-300 hover:border-green-500 bg-white text-green-800 px-3 py-1.5 rounded-lg">
+          className="self-start text-xs font-semibold border border-accent-success hover:border-green-500 bg-white text-accent-success px-3 py-1.5 rounded-lg">
           ← Lista proiecte
         </button>
       </section>
@@ -106,8 +106,8 @@ export default function ValidationGate() {
   return (
     <section className="flex flex-col gap-5">
       <div>
-        <h2 className="text-lg font-black text-[#071F80]">Validare finală</h2>
-        <p className="text-sm text-[#0A2540]/60 mt-1">
+        <h2 className="text-lg font-semibold text-[color:var(--color-text-primary)]">Validare finală</h2>
+        <p className="text-sm text-[color:var(--color-text-body)]/60 mt-1">
           Trei condiţii trebuie îndeplinite înainte ca proiectul să poată fi trimis pentru aprobare.
         </p>
       </div>
@@ -115,18 +115,18 @@ export default function ValidationGate() {
       <ul className="flex flex-col gap-2">
         {checks.map((c) => (
           <li key={c.id} className={`flex items-start gap-3 px-4 py-3 rounded-lg border ${
-            c.passed ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'
+            c.passed ? 'bg-[color:rgba(34,197,94,0.08)] border-border-subtle' : 'bg-[color:rgba(245,158,11,0.08)] border-border-subtle'
           }`}>
             <span className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-white text-sm font-bold ${
-              c.passed ? 'bg-green-500' : 'bg-red-500'
+              c.passed ? 'bg-accent-success' : 'bg-accent-warning'
             }`}>
               {c.passed ? '✓' : '✗'}
             </span>
             <div className="flex-1">
-              <p className={`text-sm font-semibold ${c.passed ? 'text-green-800' : 'text-red-800'}`}>
+              <p className={`text-sm font-semibold ${c.passed ? 'text-accent-success' : 'text-accent-warning'}`}>
                 {c.label}
               </p>
-              <p className={`text-xs mt-0.5 ${c.passed ? 'text-green-700/80' : 'text-red-700/80'}`}>
+              <p className={`text-xs mt-0.5 ${c.passed ? 'text-accent-success/80' : 'text-accent-warning/80'}`}>
                 {c.detail}
               </p>
             </div>
@@ -135,13 +135,13 @@ export default function ValidationGate() {
       </ul>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-2 text-xs text-red-700">
+        <div className="bg-[color:rgba(245,158,11,0.08)] border border-border-subtle rounded-lg px-4 py-2 text-xs text-accent-warning">
           Eroare: {error}
         </div>
       )}
 
-      <div className="flex items-center justify-between gap-3 pt-3 border-t border-[#E6E6E6]">
-        <p className="text-xs text-[#0A2540]/60">
+      <div className="flex items-center justify-between gap-3 pt-3 border-t border-[color:var(--color-border-subtle)]">
+        <p className="text-xs text-[color:var(--color-text-body)]/60">
           Timp sesiune curentă: <strong className="font-mono">
             {Math.floor(timerSeconds / 60)}m {timerSeconds % 60}s
           </strong> — se va salva ca metadata.
@@ -152,8 +152,8 @@ export default function ValidationGate() {
           onClick={handleValidate}
           className={`text-sm font-bold px-5 py-2.5 rounded-lg border transition-colors ${
             allPassed && !submitting
-              ? 'border-[#071F80] bg-[#071F80] text-white hover:bg-[#0A2540]'
-              : 'border-[#E6E6E6] bg-white text-[#0A2540]/30 cursor-not-allowed'
+              ? 'border-[color:var(--color-text-primary)] bg-[color:var(--color-text-primary)] text-white hover:bg-[color:var(--color-text-body)]'
+              : 'border-[color:var(--color-border-subtle)] bg-white text-[color:var(--color-text-body)]/30 cursor-not-allowed'
           }`}
           title={!allPassed ? 'Îndeplineşte toate condiţiile pentru a putea valida.' : ''}
         >

@@ -15,7 +15,7 @@ const DEFAULT_PHASES: Phase[] = [
   { nume: 'Faza 4 — Operationalize',    durata_sapt: 12, buget_tech: 400000, buget_adoptie: 400000, scop: 'Guvernanţă, monitorizare, optimizare continuă.' },
 ]
 
-const cellCls = 'w-full bg-white border border-[#E6E6E6] rounded px-2 py-1 text-xs focus:outline-none focus:border-[#071F80]'
+const cellCls = 'w-full bg-white border border-[color:var(--color-border-subtle)] rounded px-2 py-1 text-xs focus:outline-none focus:border-[color:var(--color-text-primary)]'
 
 export default function ImplementationRoadmap() {
   const [phases, setPhases] = useState<Phase[]>(DEFAULT_PHASES)
@@ -28,7 +28,7 @@ export default function ImplementationRoadmap() {
 
   return (
     <section className="flex flex-col gap-4">
-      <p className="text-xs text-[#0A2540]/50 italic">
+      <p className="text-xs text-[color:var(--color-text-body)]/50 italic">
         Timeline pe 4 faze ACDA. Bugetele Tech &amp; Adopţie urmăresc Regula 1:1 (CM ≥ Tech).
       </p>
       <div className="grid gap-3">
@@ -36,28 +36,28 @@ export default function ImplementationRoadmap() {
           const ratio = ph.buget_tech > 0 ? ph.buget_adoptie / ph.buget_tech : 0
           const ok = ratio >= 1.0
           return (
-            <div key={i} className="border border-[#E6E6E6] rounded-xl p-4 bg-white flex flex-col gap-3">
+            <div key={i} className="border border-[color:var(--color-border-subtle)] rounded-lg p-4 bg-white flex flex-col gap-3">
               <div className="flex items-center justify-between gap-3">
                 <input value={ph.nume} onChange={(e) => update(i, 'nume', e.target.value)}
                   className={`${cellCls} font-bold text-sm flex-1`} />
                 <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${
-                  ok ? 'bg-green-50 border-green-200 text-green-700'
-                     : 'bg-red-50 border-red-200 text-red-700'
+                  ok ? 'bg-[color:rgba(34,197,94,0.08)] border-border-subtle text-accent-success'
+                     : 'bg-[color:rgba(245,158,11,0.08)] border-border-subtle text-accent-warning'
                 }`}>
                   Regula 1:1 — ratio {ratio.toFixed(2)} {ok ? '✓' : '✗'}
                 </span>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-[10px] uppercase tracking-wider text-[#0A2540]/50 mb-1">Durată (săpt)</label>
+                  <label className="block text-[10px] uppercase tracking-wider text-[color:var(--color-text-body)]/50 mb-1">Durată (săpt)</label>
                   <input type="number" value={ph.durata_sapt} onChange={(e) => update(i, 'durata_sapt', e.target.value)} className={`${cellCls} tabular-nums`} />
                 </div>
                 <div>
-                  <label className="block text-[10px] uppercase tracking-wider text-[#0A2540]/50 mb-1">Buget Tech (RON)</label>
+                  <label className="block text-[10px] uppercase tracking-wider text-[color:var(--color-text-body)]/50 mb-1">Buget Tech (RON)</label>
                   <input type="number" value={ph.buget_tech} onChange={(e) => update(i, 'buget_tech', e.target.value)} className={`${cellCls} tabular-nums`} />
                 </div>
                 <div>
-                  <label className="block text-[10px] uppercase tracking-wider text-[#0A2540]/50 mb-1">Buget Adopţie (RON)</label>
+                  <label className="block text-[10px] uppercase tracking-wider text-[color:var(--color-text-body)]/50 mb-1">Buget Adopţie (RON)</label>
                   <input type="number" value={ph.buget_adoptie} onChange={(e) => update(i, 'buget_adoptie', e.target.value)} className={`${cellCls} tabular-nums`} />
                 </div>
               </div>
