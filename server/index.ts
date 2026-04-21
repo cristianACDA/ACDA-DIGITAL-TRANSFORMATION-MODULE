@@ -1,6 +1,9 @@
 import express from 'express'
 import cors from 'cors'
 import type Database from 'better-sqlite3'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { existsSync } from 'node:fs'
 import { initDatabase } from '../database/init.js'
 import { createGDriveRouter } from './gdrive.js'
 
@@ -488,6 +491,20 @@ app.post('/api/projects/:id/ingest', (req, res) => {
     opportunities: opportunityCrud.list(project_id),
   })
 })
+
+// ─── Static frontend (container unic: Express servește dist/ + API) ─────────
+// În dev Vite servește separat pe :5173 cu proxy /api → :3001.
+// În prod (Cloud Run) container unic serve static + API pe PORT.
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const DIST_PATH = path.resolve(__dirname, '../dist')
+if (existsSync(DIST_PATH)) {
+  app.use(express.static(DIST_PATH))
+  // SPA fallback: react-router client-side → orice rută ne-API → index.html
+  app.get(/^\/(?!api\/).*/, (_req, res) => {
+    res.sendFile(path.join(DIST_PATH, 'index.html'))
+  })
+  console.log(`[server] Serving static dist/ from ${DIST_PATH}`)
+}
 
 app.listen(PORT, () => {
   console.log(`[server] ACDA API listening on http://localhost:${PORT}`)
