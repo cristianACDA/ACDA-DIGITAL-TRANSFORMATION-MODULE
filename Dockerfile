@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
 # ═══════════════════════════════════════════════════════════════════════════════
-# CTD — ACDA Digital Transformation Module (Cloud Run europe-west3)
+# CTD — ACDA Digital Transformation Module (Cloud Run europe-west1)
 # Multi-stage: Tailscale sidecar binaries + Vite dist + tsx runtime
 # Platform: linux/amd64 (Cloud Run = x86_64; Mac M-series = ARM64 → hard fix)
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -18,9 +18,6 @@ RUN apk add --no-cache curl ca-certificates tar \
 # ─── Stage 2: Builder (npm ci + vite build → dist/) ───────────────────────────
 FROM --platform=linux/amd64 node:22-slim AS builder
 WORKDIR /app
-RUN apt-get update \
- && apt-get install -y --no-install-recommends python3 make g++ \
- && rm -rf /var/lib/apt/lists/*
 COPY package.json package-lock.json ./
 RUN npm ci --no-audit --no-fund
 COPY tsconfig*.json vite.config.ts eslint.config.js index.html ./
@@ -32,18 +29,16 @@ RUN npm run build
 FROM --platform=linux/amd64 node:22-slim AS runtime
 WORKDIR /app
 
-# ca-certificates (TLS) + iptables (Tailscale userspace) + build toolchain temporar
-# pentru native modules (better-sqlite3 prod dep; va dispărea în Faza 6 când → pg)
+# ca-certificates (TLS) + iptables (Tailscale userspace)
+# pg e pure JS → zero compile toolchain necesar
 RUN apt-get update \
- && apt-get install -y --no-install-recommends \
-      ca-certificates iptables python3 make g++ \
+ && apt-get install -y --no-install-recommends ca-certificates iptables \
  && rm -rf /var/lib/apt/lists/*
 
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev --no-audit --no-fund \
  && npm cache clean --force \
- && apt-get purge -y --auto-remove python3 make g++ \
- && rm -rf /var/lib/apt/lists/* /root/.npm
+ && rm -rf /root/.npm
 
 # Frontend build output + source TS pentru tsx runtime
 COPY --from=builder /app/dist ./dist
