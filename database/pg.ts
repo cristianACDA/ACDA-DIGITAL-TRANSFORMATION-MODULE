@@ -11,13 +11,22 @@ import { fileURLToPath } from 'node:url'
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
 // ─── Pool config ─────────────────────────────────────────────────────────────
+//
+// Prod Cloud Run: DATABASE_URL punctează la 127.0.0.1:15432 (socat relay pornit
+// în entrypoint.sh). Socat ruta prin SOCKS5 exposed de tailscaled userspace
+// (:1055) la DGX 100.93.193.85:5432. Pg vede TCP normal local → zero schimbare
+// în client. Node-postgres nu suportă async stream factories → abandonăm
+// SocksClient direct în pg și stăm cu pattern-ul TCP→socat→SOCKS5→tailnet.
+//
+// Dev local Mac: DATABASE_URL direct 100.93.193.85:5432 (Mac are Tailscale TUN
+// real, nu userspace). Socat nu rulează, pg conectează direct.
 
 function buildPoolConfig(): PoolConfig {
   const urlRaw = process.env.DATABASE_URL
   const password = process.env.ACDA_PG_PASSWORD
 
   if (!urlRaw) {
-    throw new Error('[pg] DATABASE_URL env var missing (ex. postgresql://paperclip@100.93.193.85:5432/acda_obs)')
+    throw new Error('[pg] DATABASE_URL env var missing (ex. postgresql://paperclip@127.0.0.1:15432/acda_obs)')
   }
   if (!password) {
     throw new Error('[pg] ACDA_PG_PASSWORD env var missing (Secret Manager ctd-pg-password)')
@@ -35,7 +44,8 @@ function buildPoolConfig(): PoolConfig {
     password,
     max: 5,
     idleTimeoutMillis: 30_000,
-    connectionTimeoutMillis: 10_000,
+    connectionTimeoutMillis: 30_000,
+    keepAlive: true,
   }
 }
 

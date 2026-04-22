@@ -29,10 +29,12 @@ RUN npm run build
 FROM --platform=linux/amd64 node:22-slim AS runtime
 WORKDIR /app
 
-# ca-certificates (TLS) + iptables (Tailscale userspace)
+# ca-certificates (TLS) + iptables (Tailscale userspace) + socat (TCP→SOCKS5 bridge
+# pentru pg, care face TCP direct și nu respectă ALL_PROXY; tailscaled userspace
+# expune doar SOCKS5 la :1055)
 # pg e pure JS → zero compile toolchain necesar
 RUN apt-get update \
- && apt-get install -y --no-install-recommends ca-certificates iptables \
+ && apt-get install -y --no-install-recommends ca-certificates iptables socat \
  && rm -rf /var/lib/apt/lists/*
 
 COPY package.json package-lock.json ./

@@ -41,13 +41,29 @@ else
     --hostname=ctd-cloudrun \
     --accept-routes
 
-  # Forward HTTP/HTTPS prin Tailscale socks5 pentru orice client care respectă ALL_PROXY.
-  # Atenție: pg (node-postgres) folosește TCP direct, NU respectă ALL_PROXY.
-  # Pentru PG connect folosim TS IP DGX direct (100.93.193.85) rutat prin tailscaled userspace.
+  # HTTP/HTTPS proxy pentru orice client care respectă ALL_PROXY.
+  # Cloud Run n-are CAP_NET_ADMIN → no TUN real; tailscaled în userspace-networking
+  # expune DOAR SOCKS5/HTTP CONNECT pe :1055, NU rutează TCP direct la IP-uri tailnet.
   export ALL_PROXY="socks5://localhost:1055"
   export HTTP_PROXY="http://localhost:1055"
   export HTTPS_PROXY="http://localhost:1055"
   export NO_PROXY="localhost,127.0.0.1,metadata.google.internal,metadata"
+
+  # socat TCP relay: pg face TCP direct, nu respectă ALL_PROXY.
+  # Local bind 127.0.0.1:${TS_PG_LOCAL_PORT} → HTTP CONNECT tailscaled → DGX :5432.
+  # HTTP CONNECT (PROXY: în socat) funcționează pe socat 1.7.x (Debian bookworm);
+  # SOCKS5 nativ e doar în socat 2.x. Tailscaled expune ambele pe :1055.
+  TS_PG_REMOTE_HOST="${TS_PG_REMOTE_HOST:-100.93.193.85}"
+  TS_PG_REMOTE_PORT="${TS_PG_REMOTE_PORT:-5432}"
+  TS_PG_LOCAL_PORT="${TS_PG_LOCAL_PORT:-15432}"
+  echo "[entrypoint] socat relay 127.0.0.1:${TS_PG_LOCAL_PORT} → HTTP-CONNECT(127.0.0.1:1055) → ${TS_PG_REMOTE_HOST}:${TS_PG_REMOTE_PORT}"
+  socat -d \
+    "TCP-LISTEN:${TS_PG_LOCAL_PORT},fork,reuseaddr,bind=127.0.0.1" \
+    "PROXY:127.0.0.1:${TS_PG_REMOTE_HOST}:${TS_PG_REMOTE_PORT},proxyport=1055" &
+
+  # socat listener bind-uiește sincron la fork; un sleep scurt e suficient.
+  sleep 2
+  echo "[entrypoint] socat relay active (bg pid ready)"
 fi
 
 echo "[entrypoint] Starting CTD backend (tsx) on PORT=${PORT:-8080}"
