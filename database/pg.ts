@@ -44,7 +44,9 @@ function buildPoolConfig(): PoolConfig {
     password,
     max: 5,
     idleTimeoutMillis: 30_000,
-    connectionTimeoutMillis: 30_000,
+    // Timeout mai scurt per attempt (race Tailscale peer sync la cold start Cloud Run) —
+    // waitForPgReady() din initPostgres absoarbe eșecurile inițiale prin retry.
+    connectionTimeoutMillis: 5_000,
     keepAlive: true,
   }
 }
@@ -318,11 +320,34 @@ async function backfillProjectTables(client: import('pg').PoolClient): Promise<v
 
 // ─── Public init ─────────────────────────────────────────────────────────────
 
+// Așteaptă conectivitate PG cu retry-uri. Absoarbe cold-start race în Cloud Run:
+// Tailscale peer sync poate să nu fie finalizat când initPostgres() se apelează,
+// iar socat → HTTP-CONNECT → tailnet → DGX eșuează cu connect timeout. Retry-urile
+// se întind pe max ~84s (12 × 7s), sub bugetul 4-min Cloud Run startup.
+async function waitForPgReady(): Promise<void> {
+  const MAX_ATTEMPTS = 12
+  const DELAY_MS = 2_000
+  for (let i = 1; i <= MAX_ATTEMPTS; i++) {
+    try {
+      const r = await getPool().query('SELECT 1 AS ok')
+      if (r.rows[0].ok === 1) {
+        console.log(`[pg] connectivity ready (attempt ${i}/${MAX_ATTEMPTS})`)
+        return
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      if (i === MAX_ATTEMPTS) {
+        throw new Error(`[pg] unreachable after ${MAX_ATTEMPTS} attempts: ${msg}`)
+      }
+      console.log(`[pg] attempt ${i}/${MAX_ATTEMPTS} failed (${msg}) — retry ${DELAY_MS / 1000}s`)
+      await new Promise((r) => setTimeout(r, DELAY_MS))
+    }
+  }
+}
+
 export async function initPostgres(): Promise<void> {
+  await waitForPgReady()
   await applySchema()
   await seedCloudServe()
-  // Ping sanity: SELECT 1
-  const r = await getPool().query('SELECT 1 AS ok')
-  if (r.rows[0].ok !== 1) throw new Error('[pg] sanity ping SELECT 1 failed')
   console.log('[pg] initPostgres complete')
 }
