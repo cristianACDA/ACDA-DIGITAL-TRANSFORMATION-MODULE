@@ -182,7 +182,8 @@ const opportunityCrud = makeCrud('ctd_opportunities', [
 
 app.use('/api', cfAccessMiddleware)
 
-// ─── GDrive router (deploy #1: dezactivat, 503 explicit — vezi router) ───────
+// ─── GDrive router — OAuth2 + upload CTD/{clientName}/. Gracefully 503 dacă
+// credentials lipsesc (startup log indică ENABLED/DISABLED). Vezi server/gdrive.ts.
 app.use('/api/gdrive', createGDriveRouter())
 
 // ─── Routes ───────────────────────────────────────────────────────────────────
@@ -588,7 +589,6 @@ if (existsSync(DIST_PATH)) {
 
 async function main() {
   console.log(`[server] Bootstrapping — NODE_ENV=${process.env.NODE_ENV ?? 'development'}`)
-  console.log('[server] GDrive feature: DISABLED (planned Val 1.5)')
 
   try {
     await initPostgres()
