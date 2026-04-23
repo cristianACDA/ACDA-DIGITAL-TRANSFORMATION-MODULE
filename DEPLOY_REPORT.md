@@ -28,8 +28,9 @@
 | Cloud Run URL (canonical) | LIVE | `https://ctd-175951084865.europe-west1.run.app` |
 | Cloud Run URL (legacy) | LIVE | `https://ctd-y3db3fpgsq-ew.a.run.app` |
 | Domain custom | LIVE | `https://ctd.acda.cloud` via CF proxy ORANGE + CF Access wildcard |
-| Revision ID | SERVING 100% | `ctd-00015-mqp` (commit `3f99d3b`, deployed 2026-04-23 13:08 UTC) |
-| Image | digest pinned | `europe-west1-docker.pkg.dev/acda-os-sso/cloud-run-source-deploy/ctd@sha256:de5b82d917...` |
+| Revision ID | SERVING 100% | `ctd-00016-f5m` (commit `aaadd74`, deployed 2026-04-23 18:33 UTC) — micro-fixes #3+#4 |
+| Image | digest pinned | `europe-west1-docker.pkg.dev/acda-os-sso/cloud-run-source-deploy/ctd@sha256:abf9910d14...` |
+| Prior revision | retained | `ctd-00015-mqp` (commit `3f99d3b`, deployed 2026-04-23 13:08 UTC) |
 | DNS `ctd.acda.cloud` | CNAME → `ghs.googlehosted.com` | Proxied ORANGE, Cloud Run domain mapping activ cu Google-managed cert |
 | CF Access | Wildcard `*.acda.cloud` + middleware server | Dual-layer auth (edge + app level whitelist) |
 | DB connectivity | Unix socket `/cloudsql/acda-os-sso:europe-west1:acda-prod/.s.PGSQL.5432` | Kernel-mediated, no proxy/sidecar/relay |
