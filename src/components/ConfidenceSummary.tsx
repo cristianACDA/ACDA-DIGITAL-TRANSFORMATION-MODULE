@@ -16,7 +16,7 @@ export default function ConfidenceSummary() {
 
   if (fields.length === 0) {
     return (
-      <span className="text-xs text-[#0A2540]/40 italic">Niciun câmp pe această pagină</span>
+      <span className="text-xs text-[color:var(--color-text-body)]/40 italic">Niciun câmp pe această pagină</span>
     )
   }
 
@@ -28,10 +28,10 @@ export default function ConfidenceSummary() {
         return (
           <span key={lvl}
             className={`inline-flex items-center gap-1.5 text-xs font-bold tabular-nums px-2 py-1 rounded border ${
-              n > 0 ? sty.chip : 'bg-[#F6F9FC] border-[#E6E6E6] text-[#0A2540]/30'
+              n > 0 ? sty.chip : 'bg-[color:var(--color-page)] border-[color:var(--color-border-subtle)] text-[color:var(--color-text-body)]/30'
             }`}
             title={`${n} câmp(uri) cu nivel ${sty.label}`}>
-            <span className={`w-1.5 h-1.5 rounded-full ${n > 0 ? sty.dot : 'bg-[#0A2540]/20'}`} />
+            <span className={`w-1.5 h-1.5 rounded-full ${n > 0 ? sty.dot : 'bg-[color:var(--color-text-body)]/20'}`} />
             {n} <span className="font-normal opacity-70">{sty.label.toLowerCase()}</span>
           </span>
         )

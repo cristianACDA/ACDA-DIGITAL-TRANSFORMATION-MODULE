@@ -7,16 +7,16 @@ export default function CockpitProgress() {
   return (
     <div>
       <div className="flex items-center justify-between mb-1.5">
-        <span className="text-xs font-semibold text-[#0A2540]/60 uppercase tracking-widest">
+        <span className="text-xs font-semibold text-[color:var(--color-text-body)]/60 uppercase tracking-widest">
           Progres validare
         </span>
-        <span className="text-xs font-bold text-[#071F80] tabular-nums">
+        <span className="text-xs font-bold text-[color:var(--color-text-primary)] tabular-nums">
           {validatedCount} din {totalPages} validate
         </span>
       </div>
-      <div className="w-full bg-[#E6E6E6] rounded-full h-2 overflow-hidden">
+      <div className="w-full bg-[color:var(--color-border-subtle)] rounded-full h-2 overflow-hidden">
         <div
-          className="h-2 bg-[#071F80] rounded-full transition-all duration-300"
+          className="h-2 bg-[color:var(--color-text-primary)] rounded-full transition-all duration-300"
           style={{ width: `${pct}%` }}
         />
       </div>

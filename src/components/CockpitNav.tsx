@@ -17,21 +17,21 @@ export default function CockpitNav({ currentPage }: CockpitNavProps) {
   const nextPage = PAGINI_COCKPIT.find((p) => p.numar === currentPage + 1)
 
   return (
-    <div className="border-t border-[#E6E6E6] px-6 py-4 flex items-center justify-between gap-3 bg-[#F6F9FC]">
+    <div className="border-t border-[color:var(--color-border-subtle)] px-6 py-4 flex items-center justify-between gap-3 bg-[color:var(--color-page)]">
       <button
         type="button"
         disabled={prevDisabled}
         onClick={() => navigate(`/cockpit/${currentPage - 1}`)}
         className={`text-sm font-semibold px-4 py-2 rounded-lg border transition-colors ${
           prevDisabled
-            ? 'border-[#E6E6E6] text-[#0A2540]/30 cursor-not-allowed bg-white'
-            : 'border-[#E6E6E6] text-[#071F80] bg-white hover:border-[#071F80] hover:bg-[#EEF3FF]'
+            ? 'border-[color:var(--color-border-subtle)] text-[color:var(--color-text-body)]/30 cursor-not-allowed bg-white'
+            : 'border-[color:var(--color-border-subtle)] text-[color:var(--color-text-primary)] bg-white hover:border-[color:var(--color-text-primary)] hover:bg-[color:var(--color-subtle)]'
         }`}
       >
         ← {prevPage ? prevPage.titlu_ro : 'Înapoi'}
       </button>
 
-      <span className="text-xs text-[#0A2540]/50 tabular-nums">
+      <span className="text-xs text-[color:var(--color-text-body)]/50 tabular-nums">
         Pagina {currentPage} / {totalPages}
       </span>
 
@@ -41,8 +41,8 @@ export default function CockpitNav({ currentPage }: CockpitNavProps) {
         onClick={() => navigate(`/cockpit/${currentPage + 1}`)}
         className={`text-sm font-semibold px-4 py-2 rounded-lg border transition-colors ${
           nextDisabled
-            ? 'border-[#E6E6E6] text-[#0A2540]/30 cursor-not-allowed bg-white'
-            : 'border-[#071F80] text-white bg-[#071F80] hover:bg-[#0A2540]'
+            ? 'border-[color:var(--color-border-subtle)] text-[color:var(--color-text-body)]/30 cursor-not-allowed bg-white'
+            : 'border-[color:var(--color-text-primary)] text-white bg-[color:var(--color-text-primary)] hover:bg-[color:var(--color-text-body)]'
         }`}
       >
         {nextPage ? nextPage.titlu_ro : 'Următor'} →

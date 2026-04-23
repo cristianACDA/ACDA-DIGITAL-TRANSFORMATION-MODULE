@@ -51,13 +51,13 @@ const AREA_META = [
 
 // ─── Shared input class ───────────────────────────────────────────────────────
 
-const inputCls = "w-full bg-white border border-[#E6E6E6] rounded-lg px-3 py-2 text-sm text-[#0A2540] placeholder-[#0A2540]/30 focus:outline-none focus:border-[#071F80] focus:ring-1 focus:ring-[#071F80]/10 transition-all"
-const selectCls = "w-full bg-white border border-[#E6E6E6] rounded-lg px-3 py-2 text-sm text-[#0A2540] focus:outline-none focus:border-[#071F80] focus:ring-1 focus:ring-[#071F80]/10 transition-all"
+const inputCls = "w-full bg-white border border-[color:var(--color-border-subtle)] rounded-lg px-3 py-2 text-sm text-[color:var(--color-text-body)] placeholder-[color:var(--color-text-body)]/30 focus:outline-none focus:border-[color:var(--color-text-primary)] focus:ring-1 focus:ring-[color:var(--color-text-primary)]/10 transition-all"
+const selectCls = "w-full bg-white border border-[color:var(--color-border-subtle)] rounded-lg px-3 py-2 text-sm text-[color:var(--color-text-body)] focus:outline-none focus:border-[color:var(--color-text-primary)] focus:ring-1 focus:ring-[color:var(--color-text-primary)]/10 transition-all"
 
 // ─── Reusable field components ────────────────────────────────────────────────
 
 function FieldLabel({ children }: { children: string }) {
-  return <label className="block text-xs font-medium text-[#0A2540]/60 mb-1.5">{children}</label>
+  return <label className="block text-xs font-medium text-[color:var(--color-text-body)]/60 mb-1.5">{children}</label>
 }
 
 function NumericInput({ label, value, min = 0, placeholder = '0', onChange }: {
@@ -78,12 +78,12 @@ function PercentSlider({ label, value, onChange }: { label: string; value: numbe
     <div>
       <div className="flex justify-between items-center mb-1.5">
         <FieldLabel>{label}</FieldLabel>
-        <span className="text-xs font-bold text-[#071F80] tabular-nums">{value}%</span>
+        <span className="text-xs font-bold text-[color:var(--color-text-primary)] tabular-nums">{value}%</span>
       </div>
       <input type="range" min={0} max={100} step={5} value={value}
         onChange={(e) => onChange(parseInt(e.target.value))}
-        className="w-full accent-[#071F80] cursor-pointer" />
-      <div className="flex justify-between text-xs text-[#0A2540]/30 mt-0.5"><span>0%</span><span>100%</span></div>
+        className="w-full accent-[color:var(--color-text-primary)] cursor-pointer" />
+      <div className="flex justify-between text-xs text-[color:var(--color-text-body)]/30 mt-0.5"><span>0%</span><span>100%</span></div>
     </div>
   )
 }
@@ -108,18 +108,18 @@ function ScoreCard({ label, icon, score, warnIds }: {
 }) {
   const cfg = LEVEL_STYLE[getMaturityLevel(score)]
   return (
-    <div className={`rounded-xl border p-4 ${cfg.bg} ${cfg.border} flex flex-col gap-3 shadow-sm`}>
+    <div className={`rounded-lg border p-4 ${cfg.bg} ${cfg.border} flex flex-col gap-3 shadow-sm`}>
       <div className="flex items-center justify-between">
-        <span className="text-xs text-[#0A2540]/60 font-medium">{icon} {label}</span>
+        <span className="text-xs text-[color:var(--color-text-body)]/60 font-medium">{icon} {label}</span>
         {warnIds && warnIds.length > 0 && (
-          <span className="text-xs text-amber-700 font-bold bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded">⚠ {warnIds.length}</span>
+          <span className="text-xs text-accent-warning font-bold bg-[color:rgba(245,158,11,0.08)] border border-border-subtle px-1.5 py-0.5 rounded">⚠ {warnIds.length}</span>
         )}
       </div>
       <div className="flex items-end gap-2">
-        <span className={`text-3xl font-black tabular-nums ${cfg.text}`}>{score.toFixed(2)}</span>
-        <span className="text-[#0A2540]/30 text-sm mb-0.5">/ 5</span>
+        <span className={`text-3xl font-semibold tabular-nums ${cfg.text}`}>{score.toFixed(2)}</span>
+        <span className="text-[color:var(--color-text-body)]/30 text-sm mb-0.5">/ 5</span>
       </div>
-      <div className="w-full bg-[#E6E6E6] rounded-full h-2 overflow-hidden">
+      <div className="w-full bg-[color:var(--color-border-subtle)] rounded-full h-2 overflow-hidden">
         <div className={`h-2 rounded-full transition-all duration-500 ${cfg.bar}`} style={{ width: `${(score / 5) * 100}%` }} />
       </div>
       <span className={`text-xs font-bold uppercase tracking-wider px-2 py-1 rounded border self-start ${cfg.chip}`}>
@@ -148,9 +148,9 @@ function ScoreDashboard({ areaScores, globalScore, indicatorScores }: ScoreDashb
   }
 
   return (
-    <div className="bg-white border border-[#E6E6E6] rounded-xl p-5 shadow-sm">
-      <h2 className="text-xs font-semibold text-[#0A2540]/50 uppercase tracking-widest mb-4 flex items-center gap-2">
-        <span style={{ color: '#071F80' }}>◈</span> Scor ACDA — Live
+    <div className="bg-white border border-[color:var(--color-border-subtle)] rounded-lg p-5 shadow-sm">
+      <h2 className="text-xs font-semibold text-[color:var(--color-text-body)]/50 uppercase tracking-widest mb-4 flex items-center gap-2">
+        <span className="text-text-primary">◈</span> Scor ACDA — Live
       </h2>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {AREA_META.map((area) => (
@@ -159,28 +159,28 @@ function ScoreDashboard({ areaScores, globalScore, indicatorScores }: ScoreDashb
         ))}
 
         {/* Global card — gradient border */}
-        <div className={`lg:col-span-1 rounded-xl border-2 p-4 ${globalCfg.bg} ${globalCfg.border} flex flex-col gap-3 shadow-md`}
-          style={{ background: 'linear-gradient(135deg, #F6F9FC 0%, #EEF3FF 100%)' }}>
+        <div className={`lg:col-span-1 rounded-lg border p-4 ${globalCfg.bg} ${globalCfg.border} flex flex-col gap-3 shadow-card`}
+          style={{ background: 'var(--bg-card)' }}>
           <div className="flex items-center justify-between">
-            <span className="text-xs text-[#0A2540]/60 font-medium">🎯 Scor Global</span>
+            <span className="text-xs text-[color:var(--color-text-body)]/60 font-medium">🎯 Scor Global</span>
             {below3.length > 0 && (
-              <span className="text-xs bg-amber-50 border border-amber-200 text-amber-700 font-bold px-1.5 py-0.5 rounded">
+              <span className="text-xs bg-[color:rgba(245,158,11,0.08)] border border-border-subtle text-accent-warning font-bold px-1.5 py-0.5 rounded">
                 ⚠ {below3.length} sub 3.0
               </span>
             )}
           </div>
           <div className="flex items-end gap-2">
-            <span className={`text-4xl font-black tabular-nums ${globalCfg.text}`}>{globalScore.toFixed(2)}</span>
-            <span className="text-[#0A2540]/30 text-sm mb-0.5">/ 5</span>
+            <span className={`text-4xl font-semibold tabular-nums ${globalCfg.text}`}>{globalScore.toFixed(2)}</span>
+            <span className="text-[color:var(--color-text-body)]/30 text-sm mb-0.5">/ 5</span>
           </div>
-          <div className="w-full bg-[#E6E6E6] rounded-full h-2.5 overflow-hidden">
+          <div className="w-full bg-[color:var(--color-border-subtle)] rounded-full h-2.5 overflow-hidden">
             <div className={`h-2.5 rounded-full transition-all duration-500 ${globalCfg.bar}`} style={{ width: `${(globalScore / 5) * 100}%` }} />
           </div>
           <span className={`text-xs font-bold uppercase tracking-wider px-2 py-1 rounded border self-start ${globalCfg.chip}`}>
             {globalCfg.label}
           </span>
           {below3.length > 0 && (
-            <p className="text-xs text-amber-700 leading-relaxed">
+            <p className="text-xs text-accent-warning leading-relaxed">
               Critici: <span className="font-bold">{below3.join(', ')}</span>
             </p>
           )}
@@ -198,17 +198,17 @@ function IndicatorCard({ id, name, score, children }: {
   const cfg  = LEVEL_STYLE[getMaturityLevel(score)]
   const warn = score < 3
   return (
-    <div className={`bg-white rounded-xl border p-5 flex flex-col gap-4 shadow-sm transition-all hover:shadow-md ${warn ? 'border-amber-200' : 'border-[#E6E6E6]'}`}>
+    <div className={`bg-white rounded-lg border p-5 flex flex-col gap-4 shadow-sm transition-all hover:shadow-card ${warn ? 'border-border-subtle' : 'border-[color:var(--color-border-subtle)]'}`}>
       <div className="flex items-start justify-between gap-3">
         <div>
-          <span className={`text-xs font-mono font-bold px-1.5 py-0.5 rounded border ${warn ? 'bg-amber-50 border-amber-200 text-amber-700' : 'bg-[#F6F9FC] border-[#E6E6E6] text-[#0A2540]/50'}`}>
+          <span className={`text-xs font-mono font-bold px-1.5 py-0.5 rounded border ${warn ? 'bg-[color:rgba(245,158,11,0.08)] border-border-subtle text-accent-warning' : 'bg-[color:var(--color-page)] border-[color:var(--color-border-subtle)] text-[color:var(--color-text-body)]/50'}`}>
             {id} {warn && '⚠'}
           </span>
-          <h3 className="text-sm font-semibold text-[#0A2540] mt-2">{name}</h3>
+          <h3 className="text-sm font-semibold text-[color:var(--color-text-body)] mt-2">{name}</h3>
         </div>
-        <div className={`text-2xl font-black tabular-nums flex-shrink-0 ${cfg.text}`}>{score.toFixed(1)}</div>
+        <div className={`text-2xl font-semibold tabular-nums flex-shrink-0 ${cfg.text}`}>{score.toFixed(1)}</div>
       </div>
-      <div className="w-full bg-[#E6E6E6] rounded-full h-2 overflow-hidden">
+      <div className="w-full bg-[color:var(--color-border-subtle)] rounded-full h-2 overflow-hidden">
         <div className={`h-2 rounded-full transition-all duration-300 ${cfg.bar}`} style={{ width: `${(score / 5) * 100}%` }} />
       </div>
       <div className="flex flex-col gap-3">{children}</div>
@@ -227,16 +227,16 @@ function SectionHeader({ icon, label, score, isOpen, onToggle }: {
   const cfg = LEVEL_STYLE[getMaturityLevel(score)]
   return (
     <button onClick={onToggle}
-      className={`w-full flex items-center justify-between px-5 py-4 rounded-xl border transition-all hover:shadow-md ${cfg.bg} ${cfg.border}`}>
+      className={`w-full flex items-center justify-between px-5 py-4 rounded-lg border transition-all hover:shadow-card ${cfg.bg} ${cfg.border}`}>
       <div className="flex items-center gap-3">
         <span className="text-lg">{icon}</span>
-        <span className="text-sm font-semibold text-[#0A2540]">{label}</span>
+        <span className="text-sm font-semibold text-[color:var(--color-text-body)]">{label}</span>
         <span className={`text-xs font-bold tabular-nums px-2 py-0.5 rounded border ${cfg.chip}`}>
           {score.toFixed(2)} / 5
         </span>
         <span className={`text-xs font-bold uppercase ${cfg.text}`}>{cfg.label}</span>
       </div>
-      <span className="text-[#0A2540]/40 text-xs">{isOpen ? '▲ Restrânge' : '▼ Extinde'}</span>
+      <span className="text-[color:var(--color-text-body)]/40 text-xs">{isOpen ? '▲ Restrânge' : '▼ Extinde'}</span>
     </button>
   )
 }
@@ -315,14 +315,14 @@ export default function MaturityRisk() {
   const boolOpts = [{ value: 'true', label: 'DA' }, { value: 'false', label: 'NU' }]
 
   return (
-    <div className="min-h-screen bg-[#F6F9FC] text-[#0A2540] px-4 py-6">
+    <div className="min-h-screen bg-[color:var(--color-page)] text-[color:var(--color-text-body)] px-4 py-6">
       <div className="max-w-6xl mx-auto flex flex-col gap-6">
 
         {/* Header */}
         <div>
-          <p className="text-xs text-[#0A2540]/40 uppercase tracking-widest mb-1">Evaluare ACDA</p>
-          <h1 className="text-2xl font-black" style={{ color: '#071F80' }}>Maturitate & Risc AI</h1>
-          <p className="text-sm text-[#0A2540]/60 mt-1">
+          <p className="text-xs text-[color:var(--color-text-body)]/40 uppercase tracking-widest mb-1">Evaluare ACDA</p>
+          <h1 className="text-2xl font-semibold text-text-primary">Maturitate & Risc AI</h1>
+          <p className="text-sm text-[color:var(--color-text-body)]/60 mt-1">
             Completează cei 9 indicatori pentru a calcula scorul de maturitate al organizației.
           </p>
         </div>
@@ -339,8 +339,8 @@ export default function MaturityRisk() {
                   onChange={(v) => setO1('adoptie', v)} />
                 <NumericInput label="Buget Tehnologie (RON)" value={form.O1.tech} min={1} placeholder="Ex: 100000"
                   onChange={(v) => setO1('tech', v)} />
-                <p className="text-xs text-[#0A2540]/40">
-                  Ratio: <span className="text-[#0A2540] font-mono font-bold">
+                <p className="text-xs text-[color:var(--color-text-body)]/40">
+                  Ratio: <span className="text-[color:var(--color-text-body)] font-mono font-bold">
                     {(form.O1.tech > 0 ? form.O1.adoptie / form.O1.tech : 0).toFixed(2)}
                   </span>
                   <span className="ml-2">— minim: 1.0</span>
@@ -352,8 +352,8 @@ export default function MaturityRisk() {
                   onChange={(v) => setO2('executanti', v)} />
                 <NumericInput label="Manageri / Lead-uri" value={form.O2.manageri} min={1} placeholder="Ex: 3"
                   onChange={(v) => setO2('manageri', v)} />
-                <p className="text-xs text-[#0A2540]/40">
-                  Ratio: <span className="text-[#0A2540] font-mono font-bold">
+                <p className="text-xs text-[color:var(--color-text-body)]/40">
+                  Ratio: <span className="text-[color:var(--color-text-body)] font-mono font-bold">
                     {(form.O2.manageri > 0 ? form.O2.executanti / form.O2.manageri : 0).toFixed(1)}
                   </span>
                   <span className="ml-2">— optim: {'>'}4</span>
@@ -369,18 +369,18 @@ export default function MaturityRisk() {
                   <div>
                     <div className="flex justify-between items-center mb-1.5">
                       <FieldLabel>Nivel risc (1 = scăzut, 5 = critic)</FieldLabel>
-                      <span className="text-xs font-bold text-amber-700 tabular-nums">{form.O3.nivel}/5</span>
+                      <span className="text-xs font-bold text-accent-warning tabular-nums">{form.O3.nivel}/5</span>
                     </div>
                     <input type="range" min={1} max={5} step={1} value={form.O3.nivel}
                       onChange={(e) => setO3N(parseInt(e.target.value) as 1|2|3|4|5)}
                       className="w-full accent-amber-500 cursor-pointer" />
-                    <div className="flex justify-between text-xs text-[#0A2540]/30 mt-0.5">
+                    <div className="flex justify-between text-xs text-[color:var(--color-text-body)]/30 mt-0.5">
                       <span>1 — Scăzut</span><span>5 — Critic</span>
                     </div>
                   </div>
                 )}
                 {!form.O3.areRisc && (
-                  <p className="text-xs text-green-700">✓ Fără risc de obsolescență identificat</p>
+                  <p className="text-xs text-accent-success">✓ Fără risc de obsolescență identificat</p>
                 )}
               </IndicatorCard>
             </div>
@@ -423,14 +423,14 @@ export default function MaturityRisk() {
                     value={form.S1.procentInitiative} onChange={setS1P} />
                 )}
                 {!form.S1.areTarget && (
-                  <p className="text-xs text-red-700">✗ Nicio inițiativă AI nu are target EBIT definit</p>
+                  <p className="text-xs text-accent-warning">✗ Nicio inițiativă AI nu are target EBIT definit</p>
                 )}
               </IndicatorCard>
 
               <IndicatorCard id="S2" name="Validarea Capstone" score={scores.S2}>
                 <SelectField label="Stadiu proiect demonstrativ (Capstone)"
                   value={form.S2.stadiu} options={STADIU_OPTIONS} onChange={setS2} />
-                <p className="text-xs text-[#0A2540]/40 leading-relaxed">
+                <p className="text-xs text-[color:var(--color-text-body)]/40 leading-relaxed">
                   Proiect pilot care validează întregul model de transformare AI.
                 </p>
               </IndicatorCard>

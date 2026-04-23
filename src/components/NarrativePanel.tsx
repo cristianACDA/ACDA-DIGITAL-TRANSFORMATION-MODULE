@@ -66,28 +66,28 @@ export default function NarrativePanel({ pageNum: pageNumProp }: NarrativePanelP
 
   const sourceLabel = entry
     ? entry.isManuallyEdited
-      ? { txt: 'editat manual',    chip: 'bg-blue-50 border-blue-200 text-[#071F80]' }
+      ? { txt: 'editat manual',    chip: 'bg-subtle border-border-subtle text-[color:var(--color-text-primary)]' }
       : entry.source === 'llm'
-        ? { txt: 'generat AI',      chip: 'bg-amber-50 border-amber-200 text-amber-700' }
-        : { txt: 'generat automat', chip: 'bg-green-50 border-green-200 text-green-700' }
+        ? { txt: 'generat AI',      chip: 'bg-[color:rgba(245,158,11,0.08)] border-border-subtle text-accent-warning' }
+        : { txt: 'generat automat', chip: 'bg-[color:rgba(34,197,94,0.08)] border-border-subtle text-accent-success' }
     : null
 
   return (
-    <section className="border-t border-[#E6E6E6] bg-[#FAFBFD]">
+    <section className="border-t border-[color:var(--color-border-subtle)] bg-[#FAFBFD]">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="w-full px-6 py-3 flex items-center justify-between hover:bg-[#F6F9FC] transition-colors"
+        className="w-full px-6 py-3 flex items-center justify-between hover:bg-[color:var(--color-page)] transition-colors"
       >
-        <span className="text-xs font-semibold text-[#0A2540]/60 uppercase tracking-widest flex items-center gap-2">
-          <span style={{ color: '#071F80' }}>◈</span> Narativă SCQAPS
+        <span className="text-xs font-semibold text-[color:var(--color-text-body)]/60 uppercase tracking-widest flex items-center gap-2">
+          <span className="text-text-primary">◈</span> Narativă SCQAPS
           {sourceLabel && (
             <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${sourceLabel.chip}`}>
               {sourceLabel.txt}
             </span>
           )}
         </span>
-        <span className="text-[#0A2540]/40 text-xs">{open ? '▲' : '▼'}</span>
+        <span className="text-[color:var(--color-text-body)]/40 text-xs">{open ? '▲' : '▼'}</span>
       </button>
 
       {open && (
@@ -97,7 +97,7 @@ export default function NarrativePanel({ pageNum: pageNumProp }: NarrativePanelP
               type="button"
               disabled={busy}
               onClick={() => handleGenerate(false)}
-              className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-[#071F80] bg-[#071F80] text-white hover:bg-[#0A2540] disabled:opacity-50"
+              className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-[color:var(--color-text-primary)] bg-[color:var(--color-text-primary)] text-white hover:bg-[color:var(--color-text-body)] disabled:opacity-50"
             >
               {busy ? 'Generez…' : entry ? '↻ Regenerează narativa' : '✨ Generează narativă'}
             </button>
@@ -105,7 +105,7 @@ export default function NarrativePanel({ pageNum: pageNumProp }: NarrativePanelP
               <button
                 type="button"
                 onClick={() => clearNarrative(pageNum)}
-                className="text-xs text-[#0A2540]/60 hover:text-red-700 px-2 py-1.5"
+                className="text-xs text-[color:var(--color-text-body)]/60 hover:text-accent-danger px-2 py-1.5"
               >
                 Şterge
               </button>
@@ -115,7 +115,7 @@ export default function NarrativePanel({ pageNum: pageNumProp }: NarrativePanelP
               <button
                 type="button"
                 onClick={handleSave}
-                className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-[#E6E6E6] bg-white text-[#071F80] hover:border-[#071F80]"
+                className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-[color:var(--color-border-subtle)] bg-white text-[color:var(--color-text-primary)] hover:border-[color:var(--color-text-primary)]"
               >
                 {savedFlash ? '✓ Salvat' : '💾 Salvează'}
               </button>
@@ -128,17 +128,17 @@ export default function NarrativePanel({ pageNum: pageNumProp }: NarrativePanelP
                 value={entry.text}
                 onChange={(e) => handleEdit(e.target.value)}
                 rows={Math.min(24, Math.max(12, entry.text.split('\n').length))}
-                className="w-full bg-white border border-[#E6E6E6] rounded-lg px-3 py-2.5 text-sm font-mono leading-relaxed text-[#0A2540] focus:outline-none focus:border-[#071F80] focus:ring-2 focus:ring-[#071F80]/10 resize-y"
+                className="w-full bg-white border border-[color:var(--color-border-subtle)] rounded-lg px-3 py-2.5 text-sm font-mono leading-relaxed text-[color:var(--color-text-body)] focus:outline-none focus:border-[color:var(--color-text-primary)] focus:ring-2 focus:ring-[color:var(--color-text-primary)]/10 resize-y"
               />
               {entry.generatedAt && (
-                <p className="text-[10px] text-[#0A2540]/40 italic">
+                <p className="text-[10px] text-[color:var(--color-text-body)]/40 italic">
                   generat: {new Date(entry.generatedAt).toLocaleString('ro-RO')}
                   {entry.isManuallyEdited && ' · modificat ulterior de consultant'}
                 </p>
               )}
             </>
           ) : (
-            <p className="text-sm text-[#0A2540]/60 italic">
+            <p className="text-sm text-[color:var(--color-text-body)]/60 italic">
               Apasă <strong>„Generează narativă"</strong> pentru a obţine un draft SCQAPS din datele curente.
               Fallback template — fără apel LLM (Faza 1).
             </p>

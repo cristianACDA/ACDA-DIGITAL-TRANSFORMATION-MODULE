@@ -17,26 +17,30 @@ export interface GDriveCreds {
 }
 
 // ─── Credential loading ──────────────────────────────────────────────────────
+// Sursă prod: env vars din Secret Manager (ctd-gdrive-client-id/secret/refresh-token
+// + GOOGLE_DRIVE_ROOT_FOLDER_ID în env non-secret).
+// Sursă dev local: `.env` sau `server/.gdrive-credentials.json` (ambele gitignored).
+// GOOGLE_DRIVE_ROOT_FOLDER_ID acceptă "root" literal (My Drive root) sau un folder ID.
 
 function loadCreds(): GDriveCreds | null {
-  const envId     = process.env.GOOGLE_CLIENT_ID
-  const envSecret = process.env.GOOGLE_CLIENT_SECRET
-  const envRefresh = process.env.GOOGLE_REFRESH_TOKEN
-  const envRoot   = process.env.GOOGLE_DRIVE_ROOT_FOLDER_ID
-  if (envId && envSecret && envRefresh) {
-    return { client_id: envId, client_secret: envSecret, refresh_token: envRefresh, root_folder_id: envRoot }
-  }
-  const credsPath = path.resolve(process.cwd(), 'server/.gdrive-credentials.json')
-  if (fs.existsSync(credsPath)) {
-    try {
+  try {
+    const envId      = process.env.GOOGLE_CLIENT_ID
+    const envSecret  = process.env.GOOGLE_CLIENT_SECRET
+    const envRefresh = process.env.GOOGLE_REFRESH_TOKEN
+    const envRoot    = process.env.GOOGLE_DRIVE_ROOT_FOLDER_ID || undefined
+    if (envId && envSecret && envRefresh) {
+      return { client_id: envId, client_secret: envSecret, refresh_token: envRefresh, root_folder_id: envRoot }
+    }
+    const credsPath = path.resolve(process.cwd(), 'server/.gdrive-credentials.json')
+    if (fs.existsSync(credsPath)) {
       const raw = fs.readFileSync(credsPath, 'utf-8')
       const parsed = JSON.parse(raw) as Partial<GDriveCreds>
       if (parsed.client_id && parsed.client_secret && parsed.refresh_token) {
         return parsed as GDriveCreds
       }
-    } catch (err) {
-      console.error('[gdrive] failed to parse .gdrive-credentials.json', err)
     }
+  } catch (err) {
+    console.error('[gdrive] loadCreds failed:', err instanceof Error ? err.message : err)
   }
   return null
 }
@@ -95,6 +99,17 @@ async function ensureCTDClientFolder(
 // ─── Router ──────────────────────────────────────────────────────────────────
 
 export function createGDriveRouter(): Router {
+  // Startup log: arată clar dacă Drive upload e ENABLED sau DISABLED.
+  const bootCreds = loadCreds()
+  if (bootCreds) {
+    const rootLabel = bootCreds.root_folder_id && bootCreds.root_folder_id !== 'root'
+      ? `folder:${bootCreds.root_folder_id.slice(0, 8)}…`
+      : 'My Drive root'
+    console.log(`[gdrive] ENABLED — client_id=${bootCreds.client_id.slice(0, 16)}… root=${rootLabel}`)
+  } else {
+    console.log('[gdrive] DISABLED — credentials missing (status endpoint → configured:false, upload → 503)')
+  }
+
   const router = Router()
 
   router.get('/status', (_req, res) => {

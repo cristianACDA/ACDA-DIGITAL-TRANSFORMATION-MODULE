@@ -1,0 +1,48 @@
+# ACDA CTD Cloud Run build — exclude din context Docker
+# Obligatoriu: node_modules, .git, DB local, credentials, artefacte tool chain.
+
+node_modules
+.git
+.gitignore
+.gitattributes
+
+# Env files (secretele vin via --set-secrets, NU în imagine)
+.env
+.env.*
+!.env.example
+
+# Build artefacts (rebuild în builder stage)
+dist
+dist-ssr
+*.local
+
+# DB locală SQLite (prod folosește PG pe DGX)
+database/acda.db
+database/*.db-*
+
+# Google Drive credentials (deploy #1 are GDrive disabled oricum)
+server/.gdrive-credentials.json
+.gdrive-credentials.json
+
+# Editor / OS
+.vscode
+.idea
+.DS_Store
+*.sw?
+
+# Logs
+*.log
+logs
+
+# Claude Code / gstack local state (masive, nu urcă în container)
+.claude
+
+# Docs (nu rulează în container)
+docs
+DEPLOY_REPORT.md
+
+# Static assets extra (repo-specific, gitignored)
+Dashboard_ACDA.html
+architecture_plan.html
+*.png
+!public/**

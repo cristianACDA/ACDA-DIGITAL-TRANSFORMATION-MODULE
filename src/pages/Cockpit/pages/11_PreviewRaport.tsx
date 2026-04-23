@@ -116,34 +116,34 @@ export default function PreviewRaport() {
 
   return (
     <section className="flex flex-col gap-4">
-      <div className="bg-[#EEF3FF] border border-blue-200 rounded-xl p-4 flex items-center justify-between">
+      <div className="bg-[color:var(--color-subtle)] border border-border-subtle rounded-lg p-4 flex items-center justify-between">
         <div>
-          <p className="text-xs text-[#071F80]/70 uppercase tracking-widest font-semibold">Status raport</p>
-          <p className="text-sm text-[#0A2540] mt-1">
+          <p className="text-xs text-[color:var(--color-text-primary)]/70 uppercase tracking-widest font-semibold">Status raport</p>
+          <p className="text-sm text-[color:var(--color-text-body)] mt-1">
             <strong>{completed}/15</strong> secţiuni complete.
           </p>
         </div>
         <div className="flex items-center gap-4">
-          <div className="text-3xl font-black tabular-nums text-[#071F80]">
+          <div className="text-3xl font-semibold tabular-nums text-[color:var(--color-text-primary)]">
             {Math.round((completed / 15) * 100)}%
           </div>
           <Link
             to="/deliverables/diagnostic"
-            className="text-sm font-semibold px-4 py-2 rounded-lg border border-[#071F80] text-[#071F80] hover:bg-[#EEF3FF] transition-colors inline-flex items-center gap-2"
+            className="text-sm font-semibold px-4 py-2 rounded-lg border border-[color:var(--color-text-primary)] text-[color:var(--color-text-primary)] hover:bg-[color:var(--color-subtle)] transition-colors inline-flex items-center gap-2"
             title="Diagnostic 90 secunde — 3 întrebări vizuale pentru client."
           >
             ⚡ Diagnostic 90s
           </Link>
           <Link
             to="/deliverables/strategy"
-            className="text-sm font-semibold px-4 py-2 rounded-lg border border-[#071F80] text-[#071F80] hover:bg-[#EEF3FF] transition-colors inline-flex items-center gap-2"
+            className="text-sm font-semibold px-4 py-2 rounded-lg border border-[color:var(--color-text-primary)] text-[color:var(--color-text-primary)] hover:bg-[color:var(--color-subtle)] transition-colors inline-flex items-center gap-2"
             title="Strategie de transformare în 4 capitole narative."
           >
             🎯 Strategie 10min
           </Link>
           <Link
             to="/deliverables/ai-readiness"
-            className="text-sm font-semibold px-4 py-2 rounded-lg border border-[#071F80] text-[#071F80] hover:bg-[#EEF3FF] transition-colors inline-flex items-center gap-2"
+            className="text-sm font-semibold px-4 py-2 rounded-lg border border-[color:var(--color-text-primary)] text-[color:var(--color-text-primary)] hover:bg-[color:var(--color-subtle)] transition-colors inline-flex items-center gap-2"
             title="AI Readiness Score per use case — 4 criterii."
           >
             🤖 AI Readiness
@@ -154,14 +154,14 @@ export default function PreviewRaport() {
             disabled={exporting || !client}
             className={`text-sm font-semibold px-4 py-2 rounded-lg border transition-colors inline-flex items-center gap-2 ${
               exporting || !client
-                ? 'border-[#E6E6E6] bg-[#F6F9FC] text-[#0A2540]/40 cursor-not-allowed'
-                : 'border-[#071F80] bg-[#071F80] text-white hover:bg-[#0A2540]'
+                ? 'border-[color:var(--color-border-subtle)] bg-[color:var(--color-page)] text-[color:var(--color-text-body)]/40 cursor-not-allowed'
+                : 'border-[color:var(--color-text-primary)] bg-[color:var(--color-text-primary)] text-white hover:bg-[color:var(--color-text-body)]'
             }`}
             title={!client ? 'Selectează un client înainte de export.' : 'Generează PDF cu cele 15 secţiuni.'}
           >
             {exporting ? (
               <>
-                <span className="inline-block w-3 h-3 border-2 border-white/50 border-t-white rounded-full animate-spin" />
+                <span className="inline-block w-3 h-3 border border-white/50 border-t-white rounded-full animate-spin" />
                 Se generează…
               </>
             ) : (
@@ -176,13 +176,13 @@ export default function PreviewRaport() {
               title="Generează PDF + JSON şi le uploadează în CTD/{Client}/"
               className={`text-sm font-semibold px-4 py-2 rounded-lg border transition-colors inline-flex items-center gap-2 ${
                 uploading || exporting || !client
-                  ? 'border-[#E6E6E6] bg-[#F6F9FC] text-[#0A2540]/40 cursor-not-allowed'
-                  : 'border-[#2E75B6] bg-white text-[#2E75B6] hover:bg-[#EEF3FF]'
+                  ? 'border-[color:var(--color-border-subtle)] bg-[color:var(--color-page)] text-[color:var(--color-text-body)]/40 cursor-not-allowed'
+                  : 'border-[#2E75B6] bg-white text-[#2E75B6] hover:bg-[color:var(--color-subtle)]'
               }`}
             >
               {uploading ? (
                 <>
-                  <span className="w-3 h-3 border-2 border-[#2E75B6]/50 border-t-[#2E75B6] rounded-full animate-spin" />
+                  <span className="w-3 h-3 border border-[#2E75B6]/50 border-t-[#2E75B6] rounded-full animate-spin" />
                   Se uploadează…
                 </>
               ) : (
@@ -194,27 +194,27 @@ export default function PreviewRaport() {
       </div>
 
       {uploadMessage && !uploadResult && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 text-sm text-[#071F80]">
+        <div className="bg-subtle border border-border-subtle rounded-lg px-4 py-2 text-sm text-[color:var(--color-text-primary)]">
           {uploadMessage}
         </div>
       )}
       {uploadResult && (
-        <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3 text-sm text-green-800 flex flex-col gap-1">
+        <div className="bg-[color:rgba(34,197,94,0.08)] border border-border-subtle rounded-lg px-4 py-3 text-sm text-accent-success flex flex-col gap-1">
           <strong>✓ Upload Drive complet</strong>
-          <a href={uploadResult.pdfLink} target="_blank" rel="noreferrer" className="text-[#071F80] hover:underline">📄 Raport PDF →</a>
-          <a href={uploadResult.jsonLink} target="_blank" rel="noreferrer" className="text-[#071F80] hover:underline">🗃 Date JSON →</a>
+          <a href={uploadResult.pdfLink} target="_blank" rel="noreferrer" className="text-[color:var(--color-text-primary)] hover:underline">📄 Raport PDF →</a>
+          <a href={uploadResult.jsonLink} target="_blank" rel="noreferrer" className="text-[color:var(--color-text-primary)] hover:underline">🗃 Date JSON →</a>
         </div>
       )}
 
       {exportError && (
-        <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-2 text-sm text-red-700">
+        <div className="bg-[color:rgba(245,158,11,0.08)] border border-border-subtle rounded-lg px-4 py-2 text-sm text-accent-warning">
           {exportError}
         </div>
       )}
 
-      <div className="overflow-x-auto border border-[#E6E6E6] rounded-lg">
+      <div className="overflow-x-auto border border-[color:var(--color-border-subtle)] rounded-lg">
         <table className="w-full text-sm">
-          <thead className="bg-[#F6F9FC] text-[10px] uppercase tracking-wider text-[#0A2540]/50">
+          <thead className="bg-[color:var(--color-page)] text-[10px] uppercase tracking-wider text-[color:var(--color-text-body)]/50">
             <tr>
               <th className="px-3 py-2 text-left w-16">Cod</th>
               <th className="px-3 py-2 text-left">Secţiune</th>
@@ -225,14 +225,14 @@ export default function PreviewRaport() {
           </thead>
           <tbody>
             {sections.map((s) => (
-              <tr key={s.cod} className="border-t border-[#E6E6E6]">
-                <td className="px-3 py-2 font-mono text-xs text-[#0A2540]/50">{s.cod}</td>
+              <tr key={s.cod} className="border-t border-[color:var(--color-border-subtle)]">
+                <td className="px-3 py-2 font-mono text-xs text-[color:var(--color-text-body)]/50">{s.cod}</td>
                 <td className="px-3 py-2 font-medium">{s.titlu}</td>
-                <td className="px-3 py-2 text-xs text-[#0A2540]/70">{s.detail}</td>
+                <td className="px-3 py-2 text-xs text-[color:var(--color-text-body)]/70">{s.detail}</td>
                 <td className="px-3 py-2 text-center text-xs">pag. {s.sursa_pagina}</td>
                 <td className="px-3 py-2 text-center">
                   <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${
-                    s.complete ? 'bg-green-50 border-green-200 text-green-700' : 'bg-amber-50 border-amber-200 text-amber-700'
+                    s.complete ? 'bg-[color:rgba(34,197,94,0.08)] border-border-subtle text-accent-success' : 'bg-[color:rgba(245,158,11,0.08)] border-border-subtle text-accent-warning'
                   }`}>
                     {s.complete ? '✓ complet' : '○ incomplet'}
                   </span>

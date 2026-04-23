@@ -4,7 +4,7 @@ import { useProjectContext } from '../../../context/ProjectContext'
 import type { Opportunity } from '../../../types/acda.types'
 import { EffortSize } from '../../../types/acda.types'
 
-const cellCls = 'w-full bg-white border border-[#E6E6E6] rounded px-2 py-1.5 text-xs focus:outline-none focus:border-[#071F80]'
+const cellCls = 'w-full bg-white border border-[color:var(--color-border-subtle)] rounded px-2 py-1.5 text-xs focus:outline-none focus:border-[color:var(--color-text-primary)]'
 
 export default function OpportunityMap() {
   const { opportunities, setOpportunities, activeProjectId } = useProjectContext()
@@ -31,9 +31,9 @@ export default function OpportunityMap() {
 
   return (
     <section className="flex flex-col gap-4">
-      <div className="overflow-x-auto border border-[#E6E6E6] rounded-lg">
+      <div className="overflow-x-auto border border-[color:var(--color-border-subtle)] rounded-lg">
         <table className="w-full text-sm">
-          <thead className="bg-[#F6F9FC] text-[10px] uppercase tracking-wider text-[#0A2540]/50">
+          <thead className="bg-[color:var(--color-page)] text-[10px] uppercase tracking-wider text-[color:var(--color-text-body)]/50">
             <tr>
               <th className="px-3 py-2 text-left">Oportunitate</th>
               <th className="px-3 py-2 text-left">Tip</th>
@@ -45,7 +45,7 @@ export default function OpportunityMap() {
           </thead>
           <tbody>
             {opportunities.map((r, i) => (
-              <tr key={r.id} className="border-t border-[#E6E6E6] align-top">
+              <tr key={r.id} className="border-t border-[color:var(--color-border-subtle)] align-top">
                 <td className="px-3 py-2 min-w-[200px]">
                   <ConfidenceField label="" value={r.title}
                     onChange={(v) => update(i, { title: v })}
@@ -77,19 +77,19 @@ export default function OpportunityMap() {
                     className={`${cellCls} text-right tabular-nums`} />
                 </td>
                 <td className="px-3 py-2">
-                  <button onClick={() => delRow(i)} className="text-red-600 hover:text-red-800 text-sm" title="Şterge">×</button>
+                  <button onClick={() => delRow(i)} className="text-accent-warning hover:text-accent-warning text-sm" title="Şterge">×</button>
                 </td>
               </tr>
             ))}
             {opportunities.length === 0 && (
-              <tr><td colSpan={6} className="px-3 py-6 text-center text-xs text-[#0A2540]/40">Nicio oportunitate.</td></tr>
+              <tr><td colSpan={6} className="px-3 py-6 text-center text-xs text-[color:var(--color-text-body)]/40">Nicio oportunitate.</td></tr>
             )}
           </tbody>
           {opportunities.length > 0 && (
             <tfoot>
-              <tr className="bg-[#F6F9FC] border-t-2 border-[#E6E6E6]">
-                <td colSpan={2} className="px-3 py-2 text-xs font-bold text-[#0A2540]/60 uppercase tracking-wider">Total impact</td>
-                <td className="px-3 py-2 text-right text-sm font-black tabular-nums text-green-700">{totalImpact.toLocaleString('ro-RO')}</td>
+              <tr className="bg-[color:var(--color-page)] border-t-2 border-[color:var(--color-border-subtle)]">
+                <td colSpan={2} className="px-3 py-2 text-xs font-bold text-[color:var(--color-text-body)]/60 uppercase tracking-wider">Total impact</td>
+                <td className="px-3 py-2 text-right text-sm font-semibold tabular-nums text-accent-success">{totalImpact.toLocaleString('ro-RO')}</td>
                 <td colSpan={3} />
               </tr>
             </tfoot>
@@ -97,7 +97,7 @@ export default function OpportunityMap() {
         </table>
       </div>
       <button onClick={addRow}
-        className="self-start text-xs font-semibold text-[#071F80] border border-[#E6E6E6] hover:border-[#071F80] bg-white px-3 py-1.5 rounded-lg">
+        className="self-start text-xs font-semibold text-[color:var(--color-text-primary)] border border-[color:var(--color-border-subtle)] hover:border-[color:var(--color-text-primary)] bg-white px-3 py-1.5 rounded-lg">
         + Adaugă oportunitate
       </button>
     </section>

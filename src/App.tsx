@@ -20,44 +20,51 @@ const NAV_ITEMS = [
 
 export default function App() {
   return (
-    <div className="min-h-screen bg-[#F6F9FC] font-sans">
+    <div className="min-h-screen bg-page font-sans text-text-body">
 
-      <header className="bg-[#071F80] px-4 sticky top-0 z-50 shadow-lg">
-        <div className="flex items-center justify-between gap-4 py-2.5 border-b border-white/10">
-          <div className="flex items-center gap-3 flex-shrink-0">
-            <div className="w-8 h-8 rounded bg-white flex items-center justify-center font-black text-sm shadow"
-              style={{ color: '#071F80' }}>
-              AI
-            </div>
-            <div>
-              <p className="text-xs text-white/50 leading-none">Platformă de Consultanță</p>
-              <p className="text-sm font-bold text-white leading-tight">ACDA Dashboard</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3 min-w-0">
-            <EBITWidget />
-            <span className="flex-shrink-0 text-xs bg-white/10 text-white border border-white/20 px-3 py-1 rounded-full font-mono">
-              {METHODOLOGY_VERSION}
-            </span>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-1 py-1.5">
-          {NAV_ITEMS.map((item) => (
-            <NavLink key={item.to} to={item.to}
-              className={({ isActive }) =>
-                `flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-150 ${
-                  isActive
-                    ? 'bg-white text-[#071F80] shadow-sm'
-                    : 'text-white/70 hover:text-white hover:bg-white/10 border border-transparent'
-                }`
-              }
-            >
-              <span>{item.icon}</span>
-              <span>{item.label}</span>
+      <header className="bg-page border-b border-border-subtle sticky top-0 z-50">
+        <div className="max-w-[1400px] mx-auto px-6">
+          <div className="flex items-center justify-between gap-4 h-16">
+            <NavLink to="/dashboard" className="flex items-center gap-3 flex-shrink-0">
+              <img
+                src="/logo-acda.png"
+                alt="ACDA"
+                width={40}
+                height={40}
+                className="h-10 w-auto"
+              />
+              <div className="leading-tight">
+                <p className="text-[11px] text-text-secondary">Platformă de Consultanță</p>
+                <p className="text-[15px] font-semibold text-text-primary tracking-tight">ACDA Dashboard</p>
+              </div>
             </NavLink>
-          ))}
+
+            <div className="flex items-center gap-3 min-w-0">
+              <EBITWidget />
+              <span className="flex-shrink-0 text-[11px] bg-subtle text-text-muted px-2 py-0.5 rounded-sm font-mono">
+                {METHODOLOGY_VERSION}
+              </span>
+            </div>
+          </div>
+
+          <nav className="flex items-center gap-1 -mb-px">
+            {NAV_ITEMS.map((item) => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                className={({ isActive }) =>
+                  `flex items-center gap-1.5 px-3 py-2 text-[13px] font-medium transition-colors border-b-2 ${
+                    isActive
+                      ? 'text-text-primary border-accent-primary'
+                      : 'text-text-secondary border-transparent hover:text-text-primary'
+                  }`
+                }
+              >
+                <span aria-hidden="true">{item.icon}</span>
+                <span>{item.label}</span>
+              </NavLink>
+            ))}
+          </nav>
         </div>
       </header>
 

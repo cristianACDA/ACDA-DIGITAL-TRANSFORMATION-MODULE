@@ -15,7 +15,7 @@ export default function TechnologyLandscape() {
 
   return (
     <section className="flex flex-col gap-4">
-      <p className="text-xs text-[#0A2540]/50 italic">
+      <p className="text-xs text-[color:var(--color-text-body)]/50 italic">
         Fără mock detaliat pentru tech landscape — câmpuri pre-populate cu confidence LOW (roşu),
         de completat manual de consultant pe baza Company Profile + transcriere.
       </p>

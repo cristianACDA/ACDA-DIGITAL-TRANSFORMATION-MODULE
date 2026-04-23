@@ -14,11 +14,11 @@ export default function PageShell({ pageNum, children }: PageShellProps) {
     <div className="flex flex-col h-full min-h-[60vh]">
       <div className="flex-1 px-6 py-6 flex flex-col gap-5">
         <div>
-          <p className="text-xs text-[#0A2540]/40 uppercase tracking-widest mb-1">
+          <p className="text-xs text-[color:var(--color-text-body)]/40 uppercase tracking-widest mb-1">
             Pagina {pageNum} {meta?.optionala && '· opţional'}
           </p>
-          <h1 className="text-2xl font-black text-[#071F80]">{meta?.titlu_ro ?? `Pagina ${pageNum}`}</h1>
-          <p className="text-xs text-[#0A2540]/50 mt-1 italic">{meta?.titlu}</p>
+          <h1 className="text-2xl font-semibold text-[color:var(--color-text-primary)]">{meta?.titlu_ro ?? `Pagina ${pageNum}`}</h1>
+          <p className="text-xs text-[color:var(--color-text-body)]/50 mt-1 italic">{meta?.titlu}</p>
         </div>
         {children}
       </div>
