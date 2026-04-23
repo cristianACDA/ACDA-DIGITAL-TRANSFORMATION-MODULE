@@ -45,3 +45,6 @@ database/*.db-*
 server/.gdrive-credentials.json
 .gdrive-credentials.json
 .claude/skills/gstack/
+
+# gstack security reports + analytics (local only)
+.gstack/

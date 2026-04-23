@@ -1,10 +1,42 @@
-# DEPLOY_REPORT — CLOUDRUN-CTD-001 v1.1 (v0.1.0-cloudrun-live)
+# DEPLOY_REPORT — CLOUDRUN-CTD-001 (v0.2.0-cloudsql LIVE)
 
-> Raport execuție TE-14 CLOUDRUN-CTD-001 v1.1 (Cloud Run + Tailscale + PG DGX).
-> Executor: Claude Code Opus 4.7 (1M context), branch `claude/sprint-0-claude-md-v2`.
+> Raport execuție TE-14 CLOUDRUN-CTD-001 (Cloud Run + Cloud SQL unix socket).
+> Executor: Claude Code Opus 4.7 (1M context).
 > Aprobator: Cristian (CEO ACDA).
 > Interval: 2026-04-21 — 2026-04-23.
-> Tag: `v0.1.0-cloudrun-live` (commit `460581f`).
+>
+> Tags:
+> - `v0.1.0-cloudrun-live` (commit `460581f`) — initial Cloud Run + Tailscale sidecar + PG DGX
+> - `v0.2.0-cloudsql` (commit `3f99d3b`) — **CURRENT LIVE** — Cloud SQL unix socket, no Tailscale
+
+## Changelog v0.1.0 → v0.2.0 (2026-04-23)
+
+**Driver:** sesiunea paralelă TE-UNIFIED-MIGRATE-001 a migrat 22 rânduri CTD din DGX `acda_obs.ctd_*` în Cloud SQL `acda_prod` (dual-write pattern: legacy `public.ctd_*` + unified `ctd.*` cu FK pe `public.clients` MASTER). CTD code swap a urmat natural pentru a elimina dependența de DGX.
+
+**Ce s-a schimbat:**
+- **Dockerfile**: stage Tailscale 1.96.4 alpine eliminat; runtime `apt install` redus de la `iptables socat ca-certificates` la doar `ca-certificates`. Imagine ~30 MB mai mică.
+- **`docker/entrypoint.sh`**: tot bringup-ul sidecar (tailscaled, tailscale up, ALL_PROXY/HTTP_PROXY exports, socat HTTP-CONNECT relay) eliminat. Acum doar `exec tsx server/index.ts`.
+- **`database/pg.ts`**: detectare unix socket dialect `postgresql://user@/db?host=/cloudsql/<conn>` cu fallback TCP pentru dev local (cloud-sql-proxy). Cold-start retry logic păstrat (Cloud SQL poate refuza conexiuni primele ~5-10s).
+- **DB endpoint**: `acda-os-sso:europe-west1:acda-prod` (Cloud SQL Postgres 16) via `--add-cloudsql-instances` flag pe Cloud Run service.
+- **Secret**: `ACDA_PG_PASSWORD` mounted din `acda-cloudsql-password` (înlocuiește `ctd-pg-password` care e acum orphan).
+
+## Status final (v0.2.0-cloudsql, 2026-04-23 16:08 EEST)
+
+| Artefact | Status | Valoare |
+|---|---|---|
+| Cloud Run service | LIVE | `ctd` europe-west1 (proiect `acda-os-sso`) |
+| Cloud Run URL (canonical) | LIVE | `https://ctd-175951084865.europe-west1.run.app` |
+| Cloud Run URL (legacy) | LIVE | `https://ctd-y3db3fpgsq-ew.a.run.app` |
+| Domain custom | LIVE | `https://ctd.acda.cloud` via CF proxy ORANGE + CF Access wildcard |
+| Revision ID | SERVING 100% | `ctd-00015-mqp` (commit `3f99d3b`, deployed 2026-04-23 13:08 UTC) |
+| Image | digest pinned | `europe-west1-docker.pkg.dev/acda-os-sso/cloud-run-source-deploy/ctd@sha256:de5b82d917...` |
+| DNS `ctd.acda.cloud` | CNAME → `ghs.googlehosted.com` | Proxied ORANGE, Cloud Run domain mapping activ cu Google-managed cert |
+| CF Access | Wildcard `*.acda.cloud` + middleware server | Dual-layer auth (edge + app level whitelist) |
+| DB connectivity | Unix socket `/cloudsql/acda-os-sso:europe-west1:acda-prod/.s.PGSQL.5432` | Kernel-mediated, no proxy/sidecar/relay |
+| Smoke `/api/health` (post-CF-Access JWT) | `{"ok":true,"db":"ok"}` HTTP 200 | DB reachable via Cloud SQL unix socket — verified 2026-04-23 |
+| Smoke `/api/projects` | 1 proiect CloudServe + 9 indicators (O1/O2/O3, S1/S2/S3, T1/T2/T3) HTTP 200 | Date migrate de la DGX `acda_obs` (TE-UNIFIED-MIGRATE-001 FAZA 2) intacte |
+| Smoke `/api/gdrive/status` | `{"configured":true,"hasRootFolder":false}` HTTP 200 | OAuth2 funcțional; **regression vs v0.1.0**: `hasRootFolder` era `true` (env `GOOGLE_DRIVE_ROOT_FOLDER_ID=root` lipsește pe `ctd-00015-mqp`). Funcțional (uploads merg în My Drive root by default) dar pierdere config. Vezi TODO. |
+| Tag git | `v0.2.0-cloudsql` (push 2026-04-23 seara) | retro pe `3f99d3b` |
 
 ## Status final
 
@@ -24,7 +56,9 @@
 
 ## Decizii canonice aplicate (Q1-Q5)
 
-- **Q1** PostgreSQL DGX via Tailscale sidecar userspace networking.
+> **Notă v0.2.0**: Q1 e DEPRECATED — DGX + Tailscale înlocuit cu Cloud SQL unix socket. Restul rămân valabile.
+
+- **Q1** ~~PostgreSQL DGX via Tailscale sidecar userspace networking.~~ → **v0.2.0:** Cloud SQL `acda-os-sso:europe-west1:acda-prod` (Postgres 16) via unix socket `--add-cloudsql-instances`. Zero sidecars, zero proxy.
 - **Q2** Rebrand tabele `ctd_*` snake_case (8 tabele, migrare SQLite → PG pură).
 - **Q3** Inițial: skip LiteLLM + OpenAPI + Google Drive OAuth pentru deploy #1.
   **Revizuit 2026-04-23**: GDrive OAuth2 user-scope reactivat și LIVE în
@@ -199,18 +233,52 @@ Ownership: task pentru Sprint 2, nu blocant Val 1.0.
   atacatorul află URL-ul `*.run.app`). Remediation: validare semnătură
   `Cf-Access-Jwt-Assertion` cu public key CF + check audience + expiry.
   Risc actual: mic (URL obscur, 7 users interni, 1 săpt. window), dar
-  audit-worthy. Recommend fix înainte de Sprint 2.
+  audit-worthy. **Re-confirmat în /cso v0.2.0 (2026-04-23)** ca singurul
+  HIGH finding rămas. Recommend fix înainte de Sprint 2 / team onboarding.
+- [ ] **TE-ROTATE-CREDS-001** (Val 1.5 hardening) — secrete orphan după swap
+  Cloud SQL: `ctd-pg-password` (DGX PG password legacy) + `ctd-ts-authkey`
+  (Tailscale auth key). Zero refs active în Cloud Run services (verificat
+  2026-04-23). Nu sunt vuln-uri, doar hygiene cleanup. Defer batch revoke
+  pentru când se face și rotație reală a `acda-cloudsql-password`.
 - [ ] **Val 1.5** — Integrare LiteLLM pentru NarrativeService fallback (LLM
   optional, nu mandatory).
 - [ ] **Observability** — log forwarding Cloud Run → GCP Logging sau DGX
   (nemotron-like stack). Current: stdout → Cloud Run logs UI, suficient pentru
   săptămâna 1.
-- [ ] **Rotate Tailscale auth key** — expiră după 90 zile (≈ 2026-07-22). Set
-  calendar reminder.
+- [ ] **PG observability micro-fix** — adaugă `application_name: 'ctd-cloudrun'`
+  în `database/pg.ts:41-50` PoolConfig. Fără tag, connections apar generic în
+  `pg_stat_activity` (mai ales acum când ctd + eligibility împart Cloud SQL
+  acda-prod). Effort: ~2 min. Flagat în /review v0.2.0.
+- [ ] **GDrive ROOT_FOLDER_ID regression** — revizia `ctd-00015-mqp` nu are
+  env var `GOOGLE_DRIVE_ROOT_FOLDER_ID=root` setat (smoke test arată
+  `hasRootFolder:false` vs v0.1.0 `true`). Funcțional (uploads merg în
+  My Drive root by default), dar pierdere config. Fix: adaugă
+  `--update-env-vars=GOOGLE_DRIVE_ROOT_FOLDER_ID=root` la următoarea
+  `gcloud run deploy ctd`. Sau mai bine, mută în Secret Manager
+  pentru consistență. Non-blocker, ridicat de smoke (c) addendum v1.1.
+- [ ] ~~Rotate Tailscale auth key — expiră după 90 zile~~ — **N/A v0.2.0+**:
+  Tailscale eliminat din stack. Auth key rămâne orphan până la
+  TE-ROTATE-CREDS-001.
+
+## Pipeline retro v0.2.0 (2026-04-23 seara — addendum TE-14 v1.1 close-out)
+
+`3f99d3b` a fost commit-uit local și deployed pe Cloud Run prin `gcloud run deploy --source` direct, fără să treacă prin pipeline-ul gstack pre-merge. Addendum-ul v1.1 al TE-14 a recuperat retro:
+
+| Pas | Outcome |
+|---|---|
+| Push `3f99d3b` pe `origin/main` | DONE — sincronizare remote cu Cloud Run |
+| Tag `v0.2.0-cloudsql` retro pe `3f99d3b` | DONE — pushed |
+| Verify orphan secret `ctd-pg-password` | ZERO refs in any Cloud Run service — defer la TE-ROTATE-CREDS-001 |
+| `/review` pe `3f99d3b` | PR Quality Score 9/10 — 4 INFORMATIONAL, 0 CRITICAL |
+| `/cso` daily mode pe `3f99d3b` | 1 HIGH (CF Access JWT — pre-existing, deja în TODO), 0 NEW vulns; v0.2.0 a redus surface vs v0.1.0 |
+| Smoke tests autenticate (3/3) | PASS — `/api/health` `{"ok":true,"db":"ok"}`, `/api/projects` 9 indicators, `/api/gdrive/status` configured |
 
 ## Referințe
 
 - TE-14: `CLOUDRUN-CTD-001 v1.1` (delivered via prompt — nu în repo `docs/task-envelopes/`)
+- TE-14 addendum v1.1 close-out: prompt session 2026-04-23 seara (Claude Opus 4.7)
+- TE-UNIFIED-MIGRATE-001: sesiune paralelă care a executat data migration DGX → Cloud SQL
 - SCHEMA-001 v1.1: `docs/task-envelopes/TE-CTD-FRONTIER-SCHEMA-001_v1_1.md`
 - API-001 v1.1: `docs/task-envelopes/TE-CTD-FRONTIER-API-001_v1_1.md`
 - CLAUDE.md §4.4 pipeline pre-land `/review → /cso → /qa → /canary → /ship`
+- Security report v0.2.0: `docs/security-reports/2026-04-23-cso-v0.2.0-cloudsql.json` (archivat din `.gstack/` local-only)

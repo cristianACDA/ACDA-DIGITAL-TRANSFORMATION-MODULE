@@ -1,0 +1,110 @@
+{
+  "version": "2.0.0",
+  "date": "2026-04-23T20:50:00Z",
+  "mode": "daily",
+  "scope": "diff+infra",
+  "diff_mode": true,
+  "diff_target": "3f99d3b",
+  "phases_run": [0, 1, 2, 3, 4, 5, 6, 9, 12, 13, 14],
+  "attack_surface": {
+    "code": {
+      "public_endpoints": 0,
+      "authenticated": 22,
+      "admin": 0,
+      "api": 22,
+      "uploads": 1,
+      "integrations": 1,
+      "background_jobs": 0,
+      "websockets": 0
+    },
+    "infrastructure": {
+      "ci_workflows": 0,
+      "webhook_receivers": 0,
+      "container_configs": 1,
+      "iac_configs": 0,
+      "deploy_targets": 1,
+      "secret_management": "google-secret-manager"
+    }
+  },
+  "findings": [
+    {
+      "id": 1,
+      "severity": "HIGH",
+      "confidence": 8,
+      "status": "VERIFIED",
+      "phase": 9,
+      "phase_name": "OWASP A01 — Broken Access Control",
+      "category": "OWASP A01",
+      "fingerprint": "auth-cf-access-jwt-not-validated-server-middleware-cf-access.ts",
+      "title": "CF Access middleware checks header presence only, NOT JWT signature",
+      "file": "server/middleware/cf-access.ts",
+      "line": 41,
+      "commit": "3f99d3b",
+      "description": "Middleware verifică doar headerul Cf-Access-Authenticated-User-Email. Nu validează semnătura Cf-Access-Jwt-Assertion cu CF public key. Atacator care obține URL-ul direct *.run.app (ctd-y3db3fpgsq-ew.a.run.app sau ctd-175951084865.europe-west1.run.app) poate face request bypass CF Access cu header injectat manual.",
+      "exploit_scenario": "1) Atacator descoperă URL Cloud Run prin DNS recon, log scraping sau leak. 2) curl direct la .run.app URL cu header 'Cf-Access-Authenticated-User-Email: cristian@acda.ro' fără să treacă prin CF edge. 3) Server vede email în whitelist → returnează date proiect/client.",
+      "impact": "Bypass complet CF Access auth. Acces full la 22 endpoint-uri /api/ + GDrive upload OAuth (cu rapoarte clienți). Severitate redusă de obscuritatea URL-ului + 7 users only. Ridicată de natura datelor (rapoarte CTD client cu transcriere apel + EBIT).",
+      "recommendation": "Validează JWT cu jose sau jsonwebtoken: fetch CF public keys de la https://acda-os.cloudflareaccess.com/cdn-cgi/access/certs (cache 24h), verifică signature + audience (CF Access App AUD tag) + expiry pe headerul Cf-Access-Jwt-Assertion. Pattern documentat: https://developers.cloudflare.com/cloudflare-one/identity/authorization-cookie/validating-json/. Effort: ~30 min CC.",
+      "playbook": "Already in DEPLOY_REPORT.md TODO ('URGENT — CF Access JWT validation'). Pre-existing finding, surfaced again by /cso pe v0.2.0 commit pentru completness. Recommend land before Sprint 2 / team onboarding.",
+      "verification": "self-verified — read middleware code, confirmed only req.headers['cf-access-authenticated-user-email'] checked, no JWT lib import"
+    }
+  ],
+  "supply_chain_summary": {
+    "direct_deps": 12,
+    "transitive_deps": "see package-lock.json",
+    "critical_cves": 0,
+    "high_cves": 2,
+    "install_scripts": 0,
+    "lockfile_present": true,
+    "lockfile_tracked": true,
+    "tools_skipped": ["npm audit deferred — same accepted vulns as v0.1.0 (vite dev-only, dompurify client-side)"],
+    "v0.2.0_delta_positive": [
+      "REMOVED Tailscale 1.96.4 binary (~30 MB attack surface eliminated)",
+      "REMOVED iptables apt package (privilege escalation tooling — gone)",
+      "REMOVED socat apt package (TCP relay tooling — gone)",
+      "REMOVED tailscaled state writable dir at /tmp",
+      "REMOVED TS_AUTHKEY env var (one fewer secret in container env)",
+      "Connection mode unix socket (kernel-mediated, not TCP) — eliminates network-level auth bypass risk"
+    ]
+  },
+  "filter_stats": {
+    "candidates_scanned": 8,
+    "hard_exclusion_filtered": 3,
+    "confidence_gate_filtered": 4,
+    "verification_filtered": 0,
+    "reported": 1
+  },
+  "totals": {
+    "critical": 0,
+    "high": 1,
+    "medium": 0,
+    "tentative": 0
+  },
+  "below_gate_noted": [
+    {
+      "severity": "MEDIUM",
+      "confidence": 7,
+      "title": "Dockerfile lacks USER directive (runs as root)",
+      "rationale_skip": "Cloud Run gVisor sandbox + read-only rootfs mitigates blast radius. Best-practice nice-to-have, not a real exploit path."
+    },
+    {
+      "severity": "LOW",
+      "confidence": 6,
+      "title": "CORS wildcard via app.use(cors()) — any origin allowed",
+      "rationale_skip": "App entirely behind CF Access; CSRF target is already-authenticated whitelist user. Edge gating absorbs risk."
+    },
+    {
+      "severity": "INFO",
+      "confidence": 9,
+      "title": "Orphan secret ctd-ts-authkey (Tailscale auth key)",
+      "rationale_skip": "Not a vulnerability — hygiene. Same status as ctd-pg-password. Defer to TE-ROTATE-CREDS-001 batch cleanup."
+    }
+  ],
+  "trend": {
+    "prior_report_date": null,
+    "resolved": 0,
+    "persistent": 1,
+    "new": 0,
+    "direction": "first_run_post_v0.2.0"
+  },
+  "disclaimer": "/cso is an AI-assisted scan, not a substitute for professional pentest. v0.2.0 reduced attack surface vs v0.1.0; remaining HIGH finding is pre-existing JWT-validation gap already documented."
+}
