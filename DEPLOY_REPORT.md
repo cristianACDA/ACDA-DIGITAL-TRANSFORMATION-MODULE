@@ -7,7 +7,8 @@
 >
 > Tags:
 > - `v0.1.0-cloudrun-live` (commit `460581f`) — initial Cloud Run + Tailscale sidecar + PG DGX
-> - `v0.2.0-cloudsql` (commit `3f99d3b`) — **CURRENT LIVE** — Cloud SQL unix socket, no Tailscale
+> - `v0.2.0-cloudsql` (commit `3f99d3b`) — Cloud SQL unix socket, no Tailscale
+> - `v0.2.1-jwt-hardened` (revision `ctd-00017-64q`) — **CURRENT LIVE** — CF Access JWT signature validation (HIGH finding resolved)
 
 ## Changelog v0.1.0 → v0.2.0 (2026-04-23)
 
@@ -229,13 +230,19 @@ Ownership: task pentru Sprint 2, nu blocant Val 1.0.
 
 ## Alte TODO post-deploy
 
-- [ ] **URGENT — CF Access JWT validation** — middleware curent verifică doar
-  prezența header-ului `Cf-Access-Authenticated-User-Email` (easy spoof dacă
-  atacatorul află URL-ul `*.run.app`). Remediation: validare semnătură
-  `Cf-Access-Jwt-Assertion` cu public key CF + check audience + expiry.
-  Risc actual: mic (URL obscur, 7 users interni, 1 săpt. window), dar
-  audit-worthy. **Re-confirmat în /cso v0.2.0 (2026-04-23)** ca singurul
-  HIGH finding rămas. Recommend fix înainte de Sprint 2 / team onboarding.
+- [x] **CF Access JWT validation** ✅ **RESOLVED 2026-04-24** (TE-14
+  addendum `v0.2.1-jwt-hardened`, revision `ctd-00017-64q`). Middleware
+  rescris să valideze semnătura RSA a `Cf-Access-Jwt-Assertion` (fallback pe
+  cookie `CF_Authorization`) vs JWKS publice Cloudflare Access
+  (`acda-os.cloudflareaccess.com/cdn-cgi/access/certs`, cache 1h, rate-limit
+  10 req/min), plus `audience` + `issuer` checks pe RS256. Defense-in-depth:
+  JWT valid + email în `CTD_WHITELIST` (7 emails, chain păstrat). Logs nu
+  leak-uiesc JWT — doar motivul refuzului. Env nou: `CF_ACCESS_AUD` (secret
+  `cf-access-aud`), `CF_ACCESS_TEAM_DOMAIN` (plain env). Smoke tests LIVE
+  pe `*.run.app`: 5/5 PASS (no-auth→401, valid-header→200, valid-cookie→200,
+  bad-signature→401, malformed→401). Unit tests: 9/9 PASS
+  (`server/middleware/__tests__/cf-access.test.ts`). HIGH finding /cso
+  v0.2.0 — CLOSED.
 - [ ] **TE-ROTATE-CREDS-001** (Val 1.5 hardening) — secrete orphan după swap
   Cloud SQL: `ctd-pg-password` (DGX PG password legacy) + `ctd-ts-authkey`
   (Tailscale auth key). Zero refs active în Cloud Run services (verificat
