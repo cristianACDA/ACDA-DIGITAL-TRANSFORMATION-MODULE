@@ -21,6 +21,10 @@ function buildPoolConfig(): PoolConfig {
     throw new Error('[pg] ACDA_PG_PASSWORD env var missing (Secret Manager acda-cloudsql-password)')
   }
 
+  // application_name apare în pg_stat_activity → discriminate ctd vs eligibility
+  // pe același Cloud SQL acda-prod. Override via PG_APPLICATION_NAME env (dev/test).
+  const application_name = process.env.PG_APPLICATION_NAME ?? 'ctd-cloudrun'
+
   // Unix socket dialect: postgresql://user@/db?host=/cloudsql/<conn>
   if (urlRaw.includes('host=/cloudsql/')) {
     const match = urlRaw.match(/postgresql:\/\/([^@]+)@\/([^?]+)\?host=(.+)$/)
@@ -31,6 +35,7 @@ function buildPoolConfig(): PoolConfig {
       user: decodeURIComponent(user),
       database: decodeURIComponent(database),
       password,
+      application_name,
       max: 5,
       idleTimeoutMillis: 30_000,
       connectionTimeoutMillis: 5_000,
@@ -44,6 +49,7 @@ function buildPoolConfig(): PoolConfig {
     user: decodeURIComponent(url.username),
     database: url.pathname.replace(/^\//, ''),
     password,
+    application_name,
     max: 5,
     idleTimeoutMillis: 30_000,
     connectionTimeoutMillis: 5_000,
