@@ -246,17 +246,15 @@ Ownership: task pentru Sprint 2, nu blocant Val 1.0.
 - [ ] **Observability** — log forwarding Cloud Run → GCP Logging sau DGX
   (nemotron-like stack). Current: stdout → Cloud Run logs UI, suficient pentru
   săptămâna 1.
-- [ ] **PG observability micro-fix** — adaugă `application_name: 'ctd-cloudrun'`
-  în `database/pg.ts:41-50` PoolConfig. Fără tag, connections apar generic în
-  `pg_stat_activity` (mai ales acum când ctd + eligibility împart Cloud SQL
-  acda-prod). Effort: ~2 min. Flagat în /review v0.2.0.
-- [ ] **GDrive ROOT_FOLDER_ID regression** — revizia `ctd-00015-mqp` nu are
-  env var `GOOGLE_DRIVE_ROOT_FOLDER_ID=root` setat (smoke test arată
-  `hasRootFolder:false` vs v0.1.0 `true`). Funcțional (uploads merg în
-  My Drive root by default), dar pierdere config. Fix: adaugă
-  `--update-env-vars=GOOGLE_DRIVE_ROOT_FOLDER_ID=root` la următoarea
-  `gcloud run deploy ctd`. Sau mai bine, mută în Secret Manager
-  pentru consistență. Non-blocker, ridicat de smoke (c) addendum v1.1.
+- [x] **PG observability micro-fix** ✅ DONE 2026-04-23 (revision `ctd-00016-f5m`,
+  commit `aaadd74`) — `application_name: 'ctd-cloudrun'` adăugat în
+  `database/pg.ts:23-25` (override via `PG_APPLICATION_NAME` env). Verify:
+  `SELECT application_name, count(*) FROM pg_stat_activity GROUP BY 1`
+  pe Cloud SQL acda-prod.
+- [x] **GDrive ROOT_FOLDER_ID regression** ✅ DONE 2026-04-23 (revision
+  `ctd-00016-f5m`) — `--update-env-vars GOOGLE_DRIVE_ROOT_FOLDER_ID=root`
+  aplicat la deploy. Smoke verify: `/api/gdrive/status` returnează
+  `{"configured":true,"hasRootFolder":true}` HTTP 200.
 - [ ] ~~Rotate Tailscale auth key — expiră după 90 zile~~ — **N/A v0.2.0+**:
   Tailscale eliminat din stack. Auth key rămâne orphan până la
   TE-ROTATE-CREDS-001.
