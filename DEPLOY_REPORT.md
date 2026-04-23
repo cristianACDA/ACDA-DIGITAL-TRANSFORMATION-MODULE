@@ -1,9 +1,10 @@
-# DEPLOY_REPORT — CLOUDRUN-CTD-001 v1.1
+# DEPLOY_REPORT — CLOUDRUN-CTD-001 v1.1 (v0.1.0-cloudrun-live)
 
 > Raport execuție TE-14 CLOUDRUN-CTD-001 v1.1 (Cloud Run + Tailscale + PG DGX).
 > Executor: Claude Code Opus 4.7 (1M context), branch `claude/sprint-0-claude-md-v2`.
 > Aprobator: Cristian (CEO ACDA).
-> Interval: 2026-04-21 — 2026-04-22.
+> Interval: 2026-04-21 — 2026-04-23.
+> Tag: `v0.1.0-cloudrun-live` (commit `460581f`).
 
 ## Status final
 
@@ -12,20 +13,24 @@
 | Cloud Run service | LIVE | `ctd` europe-west1 (proiect `acda-os-sso`) |
 | Cloud Run URL (canonical) | LIVE | `https://ctd-175951084865.europe-west1.run.app` |
 | Cloud Run URL (legacy) | LIVE | `https://ctd-y3db3fpgsq-ew.a.run.app` |
-| Revision ID | SERVING 100% | `ctd-00004-kmz` |
-| DNS `ctd.acda.cloud` | PENDING manual add Cristian CF | CNAME → `ctd-175951084865.europe-west1.run.app` proxied ORANGE |
-| CF Access | Wildcard `*.acda.cloud` existent | ZERO modificări dashboard |
+| Domain custom | LIVE | `https://ctd.acda.cloud` via CF proxy ORANGE + CF Access wildcard |
+| Revision ID | SERVING 100% | `ctd-00008-pgn` (commit `460581f`) |
+| DNS `ctd.acda.cloud` | CNAME → `ghs.googlehosted.com` | Proxied ORANGE, Cloud Run domain mapping activ cu Google-managed cert |
+| CF Access | Wildcard `*.acda.cloud` + middleware server | Dual-layer auth (edge + app level whitelist) |
 | Smoke `/api/health` | `{"ok":true,"db":"ok"}` | DB reachable via socat HTTP CONNECT → Tailscale → DGX |
 | Smoke `/api/projects` | 1 project + 9 indicators | CloudServe SRL seed returnat corect |
-| Smoke `/api/gdrive/status` | `{"configured":false,"planned":"Val 1.5"}` | Placeholder conform Q3 |
+| Smoke `/api/gdrive/status` | `{"configured":true,"hasRootFolder":true}` | OAuth2 user-scope upload în My Drive `cristian@acda.ro` — **temporar, migrare Val 1.5 la Shared Drive** |
 | Smoke fără CF header | HTTP 403 | Middleware cf-access.ts activ în prod |
 
 ## Decizii canonice aplicate (Q1-Q5)
 
 - **Q1** PostgreSQL DGX via Tailscale sidecar userspace networking.
 - **Q2** Rebrand tabele `ctd_*` snake_case (8 tabele, migrare SQLite → PG pură).
-- **Q3** Skip LiteLLM + OpenAPI + Google Drive OAuth pentru deploy #1
-  (GDrive returnează 503 + status `{configured:false, planned:'Val 1.5'}`).
+- **Q3** Inițial: skip LiteLLM + OpenAPI + Google Drive OAuth pentru deploy #1.
+  **Revizuit 2026-04-23**: GDrive OAuth2 user-scope reactivat și LIVE în
+  v0.1.0 (upload `CTD/{clientName}/` în My Drive `cristian@acda.ro`).
+  Pattern explicit **temporar**, migrare Val 1.5 la Service Account +
+  Shared Drive (vezi TE-20 roadmap mai jos). LiteLLM + OpenAPI rămân deferred.
 - **Q4** CF Access wildcard `*.acda.cloud` existent acoperă `ctd.acda.cloud`;
   middleware server verifică `Cf-Access-Authenticated-User-Email` vs
   `process.env.CTD_WHITELIST` (whitelist 7 emails ACDA).
@@ -122,7 +127,9 @@ Cauză: Cloud Run (gVisor sandbox) fără `CAP_NET_ADMIN` → `tailscaled --tun=
 1. **Încercare 1 (revision `ctd-00001-lmg`)**: Tailscale userspace + pg TCP direct — timeout 10s pe connect. `ECONNREFUSED`.
 2. **Încercare 2 (revision `ctd-00002-qk9`)**: pg `stream` async factory via `SocksClient.createConnection` → pg nu await-ează Promise (sync API), `setNoDelay` apelat pe `Promise` → `TypeError: this.stream.setNoDelay is not a function`.
 3. **Încercare 3 (revision `ctd-00003-?`)**: socat TCP relay cu `SOCKS5:` syntax → `socat[47] E unknown device/address "SOCKS5"` (socat 1.7.4 Debian bookworm nu suportă SOCKS5 nativ, doar SOCKS4/4A; Tailscale vorbește SOCKS5 only).
-4. **Încercare 4 (revision `ctd-00004-kmz`) — LIVE**: socat `PROXY:` (HTTP CONNECT) → funcționează. Tailscale expune ambele (SOCKS5 + HTTP CONNECT) pe :1055. Pattern: pg conectează `127.0.0.1:15432` → socat bridge → HTTP CONNECT `localhost:1055` → tailnet → DGX `100.93.193.85:5432`.
+4. **Încercare 4 (revision `ctd-00004-kmz`)**: socat `PROXY:` (HTTP CONNECT) → funcționează. Tailscale expune ambele (SOCKS5 + HTTP CONNECT) pe :1055. Pattern: pg conectează `127.0.0.1:15432` → socat bridge → HTTP CONNECT `localhost:1055` → tailnet → DGX `100.93.193.85:5432`.
+5. **Încercările 5-7 (rev `ctd-00005` / `00006` / `00007`)**: iterații GDrive reactivare + log cleanup — #5 a mers (bazat pe #4 snapshot), #6 și #7 au eșuat la `initPostgres()` pentru că Tailscale peer sync nu era finalizat la momentul query. Root cause: cold-start race.
+6. **Încercare 8 (revision `ctd-00008-pgn`) — FINAL LIVE**: `waitForPgReady()` cu 12 retry × 2s absoarbe race-ul Tailscale. Plus `connectionTimeoutMillis` redus 30s→5s pentru fail-fast per attempt. Commit `460581f` = source de adevăr pentru `v0.1.0-cloudrun-live`.
 
 ### Faza 6 — PG connectivity (pre-faza, unlock manual de Cristian)
 PostgreSQL 16 pe DGX default listen_addresses = `localhost` + UFW blocking tailscale0.
@@ -133,7 +140,59 @@ Fix (2026-04-22 seara, manual):
 - `systemctl restart postgresql` (reload nu e suficient pentru listen_addresses)
 Backup-uri create: `postgresql.conf.bak-20260422-232125`, `pg_hba.conf.bak-20260422-232125`.
 
-## TODO post-deploy
+## GDrive în v0.1.0 — temporar MyDrive, migrare Val 1.5 obligatorie
+
+**Ce shipează în v0.1.0** (revizia `ctd-00008-pgn`, commit `460581f`):
+- `POST /api/gdrive/upload` activ cu OAuth2 user-scope (`drive.file`)
+- Upload automat în `My Drive/CTD/{clientName}/` al contului `cristian@acda.ro`
+- Două fișiere per raport: `Raport_CTD_{date}.pdf` + `data_{date}.json`
+- UI 11_PreviewRaport afișează butonul "☁ Uploadează în Drive" condițional pe
+  `/api/gdrive/status.configured = true` (deja cazul în prod)
+- Secrete Secret Manager: `ctd-gdrive-client-id` + `-client-secret` +
+  `-refresh-token` (grant `ctd-runner@` secretAccessor pe toate 3)
+- Env non-secret: `GOOGLE_DRIVE_ROOT_FOLDER_ID=root` (My Drive root)
+
+**Notă explicită tech debt (v0.1.0 documented)**: pattern-ul user-refresh-token
+în MyDrive personal este **acceptabil Val 1.0** pentru validare workflow
+intern (Cristian + review) dar **obligatoriu de migrat înainte de team
+onboarding** (Oana/Ana/Patricia/Sorin/Andrei/Gabriel).
+
+**Cinci motive pentru migrare Val 1.5** (vezi TE-20 mai jos):
+1. **Audit trail greșit** — uploads apar ca `cristian@acda.ro`, nu serviciu
+   distinct. Dificil de urmărit pentru audit-uri client / GDPR.
+2. **Ownership în cont personal** = risk catastrofic. Scenariul "user
+   dispariție / schimbare rol / cont suspendat" pierde rapoarte client.
+3. **Quota Drive personală consumată** — sub presiune la zeci clienți/lună.
+4. **Acces team manual share-per-file** în loc de membership Shared Drive.
+5. **Pattern non-replicabil** la CFE / DWP / LKW / Automark — un OAuth-user-
+   refresh-token × 4 module = disaster operațional.
+
+## TE-20 GDRIVE-SA-SHAREDDRIVE-001 — roadmap Val 1.5 (MANDATORY înainte team onboarding)
+
+TE separat, estimare 45-60 min tehnic + ~30 min team onboarding:
+
+- Create Service Account `ctd-uploader@acda-os-sso.iam.gserviceaccount.com`
+  (fără roluri IAM project-level, doar Drive-specific prin Shared Drive
+  membership)
+- Create Shared Drive **"ACDA CTD Rapoarte"** în Workspace organization
+  (necesită Workspace admin pe `acda.ro`)
+- Add members Shared Drive: Cristian (Manager), team consultants (Content
+  Manager), `ctd-uploader@...` (Manager)
+- Update `server/gdrive.ts`:
+  - Auth: `google.auth.GoogleAuth({ credentials: keyJson, scopes: [...] })`
+  - `drive.files.create(..., supportsAllDrives: true, driveId: sharedDriveId)`
+  - `findFolder/createFolder` cu `includeItemsFromAllDrives: true`
+- Secrete Secret Manager:
+  - `ctd-gdrive-sa-key` (JSON key Service Account, ~2KB)
+  - `ctd-gdrive-shared-drive-id` (format `0A...`)
+- Grant `ctd-runner@` Cloud Run SA secretAccessor pe ambele
+- Frontend: zero schimbări (UI-ul deja conditional pe `status.configured`)
+- Audit trail corect: uploads apar ca `ctd-uploader@...` service account
+- Team onboarding: distribuție email cu link Shared Drive
+
+Ownership: task pentru Sprint 2, nu blocant Val 1.0.
+
+## Alte TODO post-deploy
 
 - [ ] **URGENT — CF Access JWT validation** — middleware curent verifică doar
   prezența header-ului `Cf-Access-Authenticated-User-Email` (easy spoof dacă
@@ -141,12 +200,13 @@ Backup-uri create: `postgresql.conf.bak-20260422-232125`, `pg_hba.conf.bak-20260
   `Cf-Access-Jwt-Assertion` cu public key CF + check audience + expiry.
   Risc actual: mic (URL obscur, 7 users interni, 1 săpt. window), dar
   audit-worthy. Recommend fix înainte de Sprint 2.
-- [ ] **DNS `ctd.acda.cloud`** — CNAME adăugat manual în CF de Cristian
-  (blocker Faza 5 rezolvat prin dashboard CF, nu avem API token local).
-- [ ] **Val 1.5** — Activare Google Drive OAuth2 upload (re-populare refresh token în secret nou `ctd-gdrive-creds`, update Dockerfile dacă e nevoie).
-- [ ] **Val 1.5** — Integrare LiteLLM pentru NarrativeService fallback (LLM optional, nu mandatory).
-- [ ] **Observability** — log forwarding Cloud Run → GCP Logging sau DGX (nemotron-like stack). Current: stdout → Cloud Run logs UI, suficient pentru săptămâna 1.
-- [ ] **Rotate Tailscale auth key** — expiră după 90 zile (≈ 2026-07-22). Set calendar reminder.
+- [ ] **Val 1.5** — Integrare LiteLLM pentru NarrativeService fallback (LLM
+  optional, nu mandatory).
+- [ ] **Observability** — log forwarding Cloud Run → GCP Logging sau DGX
+  (nemotron-like stack). Current: stdout → Cloud Run logs UI, suficient pentru
+  săptămâna 1.
+- [ ] **Rotate Tailscale auth key** — expiră după 90 zile (≈ 2026-07-22). Set
+  calendar reminder.
 
 ## Referințe
 
