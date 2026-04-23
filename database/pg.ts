@@ -1,7 +1,7 @@
 // ACDA CTD — PostgreSQL connection pool + idempotent schema/seed bootstrap.
-// Sursa canonică: tabele ctd_* din acda_obs pe DGX (via Tailscale sidecar în prod).
-// Env în prod: DATABASE_URL (non-secret) + ACDA_PG_PASSWORD (Secret Manager).
-// Env dev: aceleași, din .env local (nu commit).
+// v0.2.0-cloudsql: Cloud SQL acda_prod (acda-os-sso:europe-west1:acda-prod).
+// Prod Cloud Run: unix socket /cloudsql/<conn>/.s.PGSQL.5432 (via --add-cloudsql-instances).
+// Dev local: cloud-sql-proxy --port=5432 → TCP 127.0.0.1:5432.
 
 import { Pool, type PoolConfig } from 'pg'
 import { readFileSync } from 'node:fs'
@@ -10,31 +10,33 @@ import { fileURLToPath } from 'node:url'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
-// ─── Pool config ─────────────────────────────────────────────────────────────
-//
-// Prod Cloud Run: DATABASE_URL punctează la 127.0.0.1:15432 (socat relay pornit
-// în entrypoint.sh). Socat ruta prin SOCKS5 exposed de tailscaled userspace
-// (:1055) la DGX 100.93.193.85:5432. Pg vede TCP normal local → zero schimbare
-// în client. Node-postgres nu suportă async stream factories → abandonăm
-// SocksClient direct în pg și stăm cu pattern-ul TCP→socat→SOCKS5→tailnet.
-//
-// Dev local Mac: DATABASE_URL direct 100.93.193.85:5432 (Mac are Tailscale TUN
-// real, nu userspace). Socat nu rulează, pg conectează direct.
-
 function buildPoolConfig(): PoolConfig {
   const urlRaw = process.env.DATABASE_URL
   const password = process.env.ACDA_PG_PASSWORD
 
   if (!urlRaw) {
-    throw new Error('[pg] DATABASE_URL env var missing (ex. postgresql://paperclip@127.0.0.1:15432/acda_obs)')
+    throw new Error('[pg] DATABASE_URL env var missing')
   }
   if (!password) {
-    throw new Error('[pg] ACDA_PG_PASSWORD env var missing (Secret Manager ctd-pg-password)')
+    throw new Error('[pg] ACDA_PG_PASSWORD env var missing (Secret Manager acda-cloudsql-password)')
   }
 
-  // Decompose URL în fields individuale — pg.Pool nu combină fiabil
-  // `connectionString` (fără parolă) + `password` separat la SCRAM handshake.
-  // Parola stă în env, nu în URL, ca să evităm leak în logs.
+  // Unix socket dialect: postgresql://user@/db?host=/cloudsql/<conn>
+  if (urlRaw.includes('host=/cloudsql/')) {
+    const match = urlRaw.match(/postgresql:\/\/([^@]+)@\/([^?]+)\?host=(.+)$/)
+    if (!match) throw new Error('[pg] Invalid unix socket DATABASE_URL')
+    const [, user, database, host] = match
+    return {
+      host: decodeURIComponent(host),
+      user: decodeURIComponent(user),
+      database: decodeURIComponent(database),
+      password,
+      max: 5,
+      idleTimeoutMillis: 30_000,
+      connectionTimeoutMillis: 5_000,
+    }
+  }
+
   const url = new URL(urlRaw)
   return {
     host: url.hostname,
@@ -44,8 +46,6 @@ function buildPoolConfig(): PoolConfig {
     password,
     max: 5,
     idleTimeoutMillis: 30_000,
-    // Timeout mai scurt per attempt (race Tailscale peer sync la cold start Cloud Run) —
-    // waitForPgReady() din initPostgres absoarbe eșecurile inițiale prin retry.
     connectionTimeoutMillis: 5_000,
     keepAlive: true,
   }

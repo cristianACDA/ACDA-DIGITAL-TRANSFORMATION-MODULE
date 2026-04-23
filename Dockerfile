@@ -1,21 +1,11 @@
 # syntax=docker/dockerfile:1.7
 # ═══════════════════════════════════════════════════════════════════════════════
 # CTD — ACDA Digital Transformation Module (Cloud Run europe-west1)
-# Multi-stage: Tailscale sidecar binaries + Vite dist + tsx runtime
-# Platform: linux/amd64 (Cloud Run = x86_64; Mac M-series = ARM64 → hard fix)
+# v0.2.0-cloudsql: Cloud SQL unix socket via --add-cloudsql-instances.
+# No Tailscale sidecar. Platform: linux/amd64 (Cloud Run = x86_64).
 # ═══════════════════════════════════════════════════════════════════════════════
 
-# ─── Stage 1: Tailscale binaries ──────────────────────────────────────────────
-FROM --platform=linux/amd64 alpine:3.20 AS tailscale
-ARG TSVERSION=1.96.4
-RUN apk add --no-cache curl ca-certificates tar \
- && curl -fsSL -o /tmp/ts.tgz \
-      "https://pkgs.tailscale.com/stable/tailscale_${TSVERSION}_amd64.tgz" \
- && mkdir -p /out \
- && tar -xzf /tmp/ts.tgz -C /out --strip-components=1 \
- && ls -la /out/tailscale /out/tailscaled
-
-# ─── Stage 2: Builder (npm ci + vite build → dist/) ───────────────────────────
+# ─── Stage 1: Builder (npm ci + vite build → dist/) ──────────────────────────
 FROM --platform=linux/amd64 node:22-slim AS builder
 WORKDIR /app
 COPY package.json package-lock.json ./
@@ -25,16 +15,13 @@ COPY src ./src
 COPY public ./public
 RUN npm run build
 
-# ─── Stage 3: Runtime ─────────────────────────────────────────────────────────
+# ─── Stage 2: Runtime ─────────────────────────────────────────────────────────
 FROM --platform=linux/amd64 node:22-slim AS runtime
 WORKDIR /app
 
-# ca-certificates (TLS) + iptables (Tailscale userspace) + socat (TCP→SOCKS5 bridge
-# pentru pg, care face TCP direct și nu respectă ALL_PROXY; tailscaled userspace
-# expune doar SOCKS5 la :1055)
-# pg e pure JS → zero compile toolchain necesar
+# ca-certificates pentru TLS outbound (GoogleAPIs, OpenAPI, etc.)
 RUN apt-get update \
- && apt-get install -y --no-install-recommends ca-certificates iptables socat \
+ && apt-get install -y --no-install-recommends ca-certificates \
  && rm -rf /var/lib/apt/lists/*
 
 COPY package.json package-lock.json ./
@@ -47,18 +34,12 @@ COPY --from=builder /app/dist ./dist
 COPY server ./server
 COPY database ./database
 
-# Tailscale sidecar
-COPY --from=tailscale /out/tailscale /usr/local/bin/tailscale
-COPY --from=tailscale /out/tailscaled /usr/local/bin/tailscaled
-
-# Entrypoint
+# Entrypoint (no sidecars)
 COPY docker/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
 ENV NODE_ENV=production \
-    PORT=8080 \
-    TS_STATE_DIR=/tmp \
-    TS_SOCKET=/tmp/tailscaled.sock
+    PORT=8080
 
 EXPOSE 8080
 ENTRYPOINT ["/entrypoint.sh"]
