@@ -1,9 +1,12 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { useProjectContext } from '../../../context/ProjectContext'
 import { useCockpit } from '../../../layouts/CockpitLayout'
 import { PDFExportService } from '../../../services/export/PDFExportService'
 import { GDriveUploadService } from '../../../services/gdrive/GDriveUploadService'
+
+// TE-24 UX-GDRIVE-ONLY-001: single "Descarcă din Drive" button, auto-upload
+// pe mount când client + date sunt complete. Fallback local doar pe error.
 
 interface Section {
   cod: string
@@ -13,15 +16,19 @@ interface Section {
   detail: string
 }
 
+type DriveStatus = 'idle' | 'uploading' | 'ready' | 'error'
+
 export default function PreviewRaport() {
   const { client, project, ebitBaseline, maturityIndicators } = useProjectContext()
   const { fieldsByPage, statuses, narratives } = useCockpit()
-  const [exporting, setExporting] = useState(false)
-  const [exportError, setExportError] = useState<string | null>(null)
+
+  const [driveStatus, setDriveStatus] = useState<DriveStatus>('idle')
+  const [driveUrl, setDriveUrl] = useState<string | null>(null)
+  const [driveUploadedAt, setDriveUploadedAt] = useState<string | null>(null)
+  const [driveError, setDriveError] = useState<string>('')
   const [gdriveConfigured, setGdriveConfigured] = useState(false)
-  const [uploading, setUploading] = useState(false)
-  const [uploadResult, setUploadResult] = useState<{ pdfLink: string; jsonLink: string } | null>(null)
-  const [uploadMessage, setUploadMessage] = useState<string | null>(null)
+  const [showToast, setShowToast] = useState(false)
+  const uploadTriggered = useRef(false)
 
   useEffect(() => {
     GDriveUploadService.status().then((s) => setGdriveConfigured(s.configured))
@@ -55,63 +62,57 @@ export default function PreviewRaport() {
     narratives, fieldsByPage, statuses,
   })
 
-  const handleExport = async () => {
-    setExporting(true)
-    setExportError(null)
+  // Auto-upload Drive pe mount — single-shot, după ce client + gdrive config ready.
+  useEffect(() => {
+    if (!gdriveConfigured || !client || uploadTriggered.current) return
+    uploadTriggered.current = true
+    setDriveStatus('uploading')
+    ;(async () => {
+      try {
+        const input = buildInput()
+        const clientName = client?.company_name ?? 'Client'
+        const date = new Date().toISOString().slice(0, 10)
+        const pdfBlob = await PDFExportService.generate(input)
+        const { pdf } = await GDriveUploadService.uploadReportBundle(
+          clientName,
+          pdfBlob,
+          {
+            exportedAt: new Date().toISOString(),
+            client, project, ebitBaseline,
+            maturityIndicators, narratives, fieldsByPage, statuses,
+          },
+          date,
+        )
+        setDriveUrl(pdf.link)
+        setDriveUploadedAt(pdf.uploadedAt ?? new Date().toISOString())
+        setDriveStatus('ready')
+      } catch (err) {
+        console.warn('[PreviewRaport] drive auto-upload fallback:', err)
+        setDriveError(err instanceof Error ? err.message : 'Upload Drive eșuat')
+        setDriveStatus('error')
+        setShowToast(true)
+        setTimeout(() => setShowToast(false), 6000)
+      }
+    })()
+  }, [gdriveConfigured, client])
+
+  const handleLocalDownload = async () => {
     try {
       await PDFExportService.download(buildInput())
     } catch (err) {
-      console.error('[PreviewRaport] export PDF failed', err)
-      setExportError(err instanceof Error ? err.message : 'Eroare necunoscută la generare PDF.')
-    } finally {
-      setExporting(false)
+      console.error('[PreviewRaport] local download failed', err)
     }
   }
 
-  const handleUploadToDrive = async () => {
-    setUploading(true)
-    setExportError(null)
-    setUploadResult(null)
-    setUploadMessage(null)
+  const formatTimestamp = (iso: string | null): string | null => {
+    if (!iso) return null
     try {
-      const input = buildInput()
-      const clientName = client?.company_name ?? 'Client'
-      // Generăm PDF-ul o dată şi-l folosim şi local (download) şi upload.
-      const pdfBlob = await PDFExportService.generate(input)
-
-      // Download local (comportament identic cu export normal).
-      const date = new Date().toISOString().slice(0, 10)
-      const url = URL.createObjectURL(pdfBlob)
-      const a = document.createElement('a')
-      const slug = clientName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
-      a.href = url; a.download = `acda-raport-${slug}-${date}.pdf`
-      document.body.appendChild(a); a.click(); document.body.removeChild(a)
-      setTimeout(() => URL.revokeObjectURL(url), 1000)
-
-      const status = await GDriveUploadService.status()
-      if (!status.configured) {
-        setUploadMessage('GDrive neconfigurat — fişierul a fost salvat local.')
-        return
-      }
-
-      const { pdf, json } = await GDriveUploadService.uploadReportBundle(
-        clientName,
-        pdfBlob,
-        {
-          exportedAt: new Date().toISOString(),
-          client, project, ebitBaseline,
-          maturityIndicators, narratives, fieldsByPage, statuses,
-        },
-        date,
-      )
-      setUploadResult({ pdfLink: pdf.link, jsonLink: json.link })
-      setUploadMessage('Upload complet în CTD/{client}/ — link-uri mai jos.')
-    } catch (err) {
-      console.error('[PreviewRaport] upload GDrive failed', err)
-      setExportError(err instanceof Error ? err.message : 'Upload GDrive a eşuat.')
-    } finally {
-      setUploading(false)
-    }
+      const d = new Date(iso)
+      return d.toLocaleString('ro-RO', {
+        day: '2-digit', month: '2-digit', year: 'numeric',
+        hour: '2-digit', minute: '2-digit',
+      })
+    } catch { return null }
   }
 
   return (
@@ -122,6 +123,11 @@ export default function PreviewRaport() {
           <p className="text-sm text-[color:var(--color-text-body)] mt-1">
             <strong>{completed}/15</strong> secţiuni complete.
           </p>
+          {driveStatus === 'ready' && driveUploadedAt && (
+            <p className="text-[11px] text-[color:var(--color-text-body)]/50 mt-1">
+              Ultima versiune: {formatTimestamp(driveUploadedAt)}
+            </p>
+          )}
         </div>
         <div className="flex items-center gap-4">
           <div className="text-3xl font-semibold tabular-nums text-[color:var(--color-text-primary)]">
@@ -148,67 +154,65 @@ export default function PreviewRaport() {
           >
             🤖 AI Readiness
           </Link>
-          <button
-            type="button"
-            onClick={handleExport}
-            disabled={exporting || !client}
-            className={`text-sm font-semibold px-4 py-2 rounded-lg border transition-colors inline-flex items-center gap-2 ${
-              exporting || !client
-                ? 'border-[color:var(--color-border-subtle)] bg-[color:var(--color-page)] text-[color:var(--color-text-body)]/40 cursor-not-allowed'
-                : 'border-[color:var(--color-text-primary)] bg-[color:var(--color-text-primary)] text-white hover:bg-[color:var(--color-text-body)]'
-            }`}
-            title={!client ? 'Selectează un client înainte de export.' : 'Generează PDF cu cele 15 secţiuni.'}
-          >
-            {exporting ? (
-              <>
-                <span className="inline-block w-3 h-3 border border-white/50 border-t-white rounded-full animate-spin" />
-                Se generează…
-              </>
-            ) : (
-              <>📄 Exportă Raport PDF</>
-            )}
-          </button>
-          {gdriveConfigured && (
+
+          {/* Single button "Descarcă din Drive" — state machine TE-24 */}
+          {driveStatus === 'ready' && driveUrl ? (
+            <a
+              href={driveUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="text-sm font-semibold px-4 py-2 rounded-lg border border-[#2E75B6] bg-[#2E75B6] text-white hover:bg-[#245f94] transition-colors inline-flex items-center gap-2"
+              title="Deschide raportul în Google Drive (tab nou)"
+            >
+              🔵 Descarcă din Drive
+            </a>
+          ) : driveStatus === 'error' ? (
             <button
               type="button"
-              onClick={handleUploadToDrive}
-              disabled={uploading || exporting || !client}
-              title="Generează PDF + JSON şi le uploadează în CTD/{Client}/"
+              onClick={handleLocalDownload}
+              disabled={!client}
               className={`text-sm font-semibold px-4 py-2 rounded-lg border transition-colors inline-flex items-center gap-2 ${
-                uploading || exporting || !client
+                !client
                   ? 'border-[color:var(--color-border-subtle)] bg-[color:var(--color-page)] text-[color:var(--color-text-body)]/40 cursor-not-allowed'
-                  : 'border-[#2E75B6] bg-white text-[#2E75B6] hover:bg-[color:var(--color-subtle)]'
+                  : 'border-[color:var(--color-border-subtle)] bg-white text-[color:var(--color-text-primary)] hover:bg-[color:var(--color-subtle)]'
               }`}
+              title={driveError || 'Drive indisponibil — descarcă local'}
             >
-              {uploading ? (
-                <>
-                  <span className="w-3 h-3 border border-[#2E75B6]/50 border-t-[#2E75B6] rounded-full animate-spin" />
-                  Se uploadează…
-                </>
-              ) : (
-                <>☁ Uploadează în Drive</>
-              )}
+              ⬇️ Descarcă PDF (local)
+            </button>
+          ) : (
+            <button
+              type="button"
+              disabled
+              className="text-sm font-semibold px-4 py-2 rounded-lg border border-[color:var(--color-border-subtle)] bg-[color:var(--color-page)] text-[color:var(--color-text-body)]/50 cursor-not-allowed inline-flex items-center gap-2"
+              title="Raportul se pregătește — upload în Drive în curs"
+            >
+              <span className="inline-block w-3 h-3 border border-[color:var(--color-text-body)]/40 border-t-[color:var(--color-text-body)] rounded-full animate-spin" />
+              ⏳ Se pregătește...
             </button>
           )}
         </div>
       </div>
 
-      {uploadMessage && !uploadResult && (
-        <div className="bg-subtle border border-border-subtle rounded-lg px-4 py-2 text-sm text-[color:var(--color-text-primary)]">
-          {uploadMessage}
-        </div>
-      )}
-      {uploadResult && (
-        <div className="bg-[color:rgba(34,197,94,0.08)] border border-border-subtle rounded-lg px-4 py-3 text-sm text-accent-success flex flex-col gap-1">
-          <strong>✓ Upload Drive complet</strong>
-          <a href={uploadResult.pdfLink} target="_blank" rel="noreferrer" className="text-[color:var(--color-text-primary)] hover:underline">📄 Raport PDF →</a>
-          <a href={uploadResult.jsonLink} target="_blank" rel="noreferrer" className="text-[color:var(--color-text-primary)] hover:underline">🗃 Date JSON →</a>
-        </div>
-      )}
-
-      {exportError && (
-        <div className="bg-[color:rgba(245,158,11,0.08)] border border-border-subtle rounded-lg px-4 py-2 text-sm text-accent-warning">
-          {exportError}
+      {/* Toast error fallback — auto-dismiss 6s */}
+      {showToast && driveStatus === 'error' && (
+        <div
+          role="alert"
+          className="fixed bottom-6 right-6 max-w-sm bg-[color:rgba(220,38,38,0.05)] border border-[color:rgba(220,38,38,0.3)] rounded-lg shadow-lg px-4 py-3 text-sm text-[#7f1d1d] flex items-start gap-2 z-50"
+        >
+          <span className="text-lg leading-none">⚠</span>
+          <div className="flex-1">
+            <p className="font-semibold">Upload Drive eșuat</p>
+            <p className="text-xs mt-0.5 opacity-80">{driveError}. Folosește download local.</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowToast(false)}
+            className="font-bold opacity-60 hover:opacity-100"
+            aria-label="Închide"
+          >
+            ×
+          </button>
         </div>
       )}
 
