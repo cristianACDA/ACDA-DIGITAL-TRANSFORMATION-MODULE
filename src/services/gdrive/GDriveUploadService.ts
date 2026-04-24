@@ -10,6 +10,8 @@ export interface GDriveUploadResult {
   fileId: string
   link: string
   folderId: string
+  alreadyExisted?: boolean
+  uploadedAt?: string
 }
 
 async function blobToBase64(blob: Blob): Promise<string> {
