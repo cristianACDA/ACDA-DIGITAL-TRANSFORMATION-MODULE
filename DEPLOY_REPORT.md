@@ -288,3 +288,27 @@ Ownership: task pentru Sprint 2, nu blocant Val 1.0.
 - API-001 v1.1: `docs/task-envelopes/TE-CTD-FRONTIER-API-001_v1_1.md`
 - CLAUDE.md §4.4 pipeline pre-land `/review → /cso → /qa → /canary → /ship`
 - Security report v0.2.0: `docs/security-reports/2026-04-23-cso-v0.2.0-cloudsql.json` (archivat din `.gstack/` local-only)
+
+## TE-21 GDRIVE-SA-SHAREDDRIVE-001 — reactivare upload via SA + Shared Drive (2026-04-24)
+
+Reactivat GDrive upload din CTD PreviewRaport direct în Shared Drive **ACDA CTD Rapoarte** (`0AFFfulxAy0AaUk9PVA`) prin Application Default Credentials — **zero JSON keys**, zero refresh token. `ctd-runner@acda-os-sso.iam.gserviceaccount.com` (SA runtime existent) e Content Manager pe Shared Drive, iar google-auth-library detectează automat credentialul pe Cloud Run.
+
+| Item | Stare |
+|---|---|
+| Secret `ctd-gdrive-shared-drive-id` creat (value `0AFFfulxAy0AaUk9PVA`) | DONE |
+| Secret-uri legacy OAuth (`ctd-gdrive-client-id/secret/refresh-token`) șterse | DONE — 3 secrete revoked |
+| `server/gdrive.ts` rescris: `google.auth.GoogleAuth` + `drive.file` scope + `supportsAllDrives=true` pe toate call-urile | DONE |
+| Structură folder pe Shared Drive: `CTD/{client}/{YYYY-MM-DD}/{fileName}` | DONE |
+| Revision deploy | `ctd-00019-ks7` (prima `ctd-00018-l8p` a eșuat cu refs la secretele OAuth șterse; redeploy cu `--remove-secrets GOOGLE_CLIENT_ID,GOOGLE_CLIENT_SECRET,GOOGLE_REFRESH_TOKEN --remove-env-vars GOOGLE_DRIVE_ROOT_FOLDER_ID`) |
+| Boot log | `[gdrive] ENABLED — ADC + Shared Drive 0AFFfulxAy…` |
+| Traffic | 100% → `ctd-00019-ks7` |
+| UI `11_PreviewRaport.tsx` | unchanged — buton "Uploadează în Drive" e condiționat de `/api/gdrive/status.configured` care acum returnează true |
+| Browser smoke test (login CF Access + upload real client) | PENDING — manual CEO via ctd.acda.cloud |
+
+**Decizii canonice TE-21:**
+- ADC + SA reutilizare (NU creez SA-uri noi)
+- Scope `drive.file` (minimal: acces doar la fișiere create de SA)
+- Team members primesc acces automat via Shared Drive (NU share per fișier)
+- Eligibility folosește default compute SA (`175951084865-compute@...`), NU creez elig-uploader dedicat
+
+Tag: `v0.2.0-gdrive-shared-drive`.
