@@ -1,162 +1,158 @@
-// P6-T2: Google Drive upload endpoints (server-side).
-// Credenţialele NU se expun în browser — totul trece prin /api/gdrive/*.
-// OAuth2 cu refresh token (sursă: .env sau server/.gdrive-credentials.json).
+// TE-21 GDRIVE-SA-SHAREDDRIVE-001: upload în Shared Drive via ADC + SA runtime.
+// Zero JSON keys, zero OAuth refresh token. google-auth-library detectează
+// automat Cloud Run SA (ctd-runner@acda-os-sso.iam.gserviceaccount.com) via ADC.
+// Scope: drive.file (doar fișiere create de acest SA, nu acces full Drive).
 
 import { Router } from 'express'
-import { google } from 'googleapis'
-import fs from 'node:fs'
-import path from 'node:path'
+import { google, drive_v3 } from 'googleapis'
 import { Readable } from 'node:stream'
 
-export interface GDriveCreds {
-  client_id: string
-  client_secret: string
-  refresh_token: string
-  /** Folder rădăcină implicit pentru upload (ex. ID folder "CTD"). Opţional. */
-  root_folder_id?: string
-}
+const SHARED_DRIVE_ID = process.env.GDRIVE_SHARED_DRIVE_ID || ''
+const DRIVE_SCOPES = ['https://www.googleapis.com/auth/drive.file']
 
-// ─── Credential loading ──────────────────────────────────────────────────────
-// Sursă prod: env vars din Secret Manager (ctd-gdrive-client-id/secret/refresh-token
-// + GOOGLE_DRIVE_ROOT_FOLDER_ID în env non-secret).
-// Sursă dev local: `.env` sau `server/.gdrive-credentials.json` (ambele gitignored).
-// GOOGLE_DRIVE_ROOT_FOLDER_ID acceptă "root" literal (My Drive root) sau un folder ID.
+type DriveClient = drive_v3.Drive
 
-function loadCreds(): GDriveCreds | null {
-  try {
-    const envId      = process.env.GOOGLE_CLIENT_ID
-    const envSecret  = process.env.GOOGLE_CLIENT_SECRET
-    const envRefresh = process.env.GOOGLE_REFRESH_TOKEN
-    const envRoot    = process.env.GOOGLE_DRIVE_ROOT_FOLDER_ID || undefined
-    if (envId && envSecret && envRefresh) {
-      return { client_id: envId, client_secret: envSecret, refresh_token: envRefresh, root_folder_id: envRoot }
-    }
-    const credsPath = path.resolve(process.cwd(), 'server/.gdrive-credentials.json')
-    if (fs.existsSync(credsPath)) {
-      const raw = fs.readFileSync(credsPath, 'utf-8')
-      const parsed = JSON.parse(raw) as Partial<GDriveCreds>
-      if (parsed.client_id && parsed.client_secret && parsed.refresh_token) {
-        return parsed as GDriveCreds
-      }
-    }
-  } catch (err) {
-    console.error('[gdrive] loadCreds failed:', err instanceof Error ? err.message : err)
+// ─── ADC client ──────────────────────────────────────────────────────────────
+// În Cloud Run: GoogleAuth preia automat SA-ul atașat serviciului.
+// În dev local: GOOGLE_APPLICATION_CREDENTIALS (path .json) SAU gcloud auth
+// application-default login (user ADC). Nu hardcodăm nimic.
+
+let driveClientPromise: Promise<DriveClient> | null = null
+
+async function getDriveClient(): Promise<DriveClient> {
+  if (!driveClientPromise) {
+    driveClientPromise = (async () => {
+      const auth = new google.auth.GoogleAuth({ scopes: DRIVE_SCOPES })
+      const authClient = await auth.getClient()
+      return google.drive({ version: 'v3', auth: authClient as any })
+    })().catch((err) => {
+      driveClientPromise = null
+      throw err
+    })
   }
-  return null
-}
-
-function buildDriveClient(creds: GDriveCreds) {
-  const auth = new google.auth.OAuth2(creds.client_id, creds.client_secret)
-  auth.setCredentials({ refresh_token: creds.refresh_token })
-  return google.drive({ version: 'v3', auth })
+  return driveClientPromise
 }
 
 // ─── Drive helpers ───────────────────────────────────────────────────────────
 
-type DriveClient = ReturnType<typeof buildDriveClient>
-
-async function findFolder(drive: DriveClient, parentId: string, name: string): Promise<string | null> {
+async function findOrCreateFolder(
+  drive: DriveClient,
+  parentId: string,
+  name: string,
+): Promise<string> {
+  const escaped = name.replace(/'/g, "\\'")
   const q = [
     `'${parentId}' in parents`,
-    `name = '${name.replace(/'/g, "\\'")}'`,
+    `name = '${escaped}'`,
     `mimeType = 'application/vnd.google-apps.folder'`,
     `trashed = false`,
   ].join(' and ')
-  const res = await drive.files.list({ q, fields: 'files(id,name)', pageSize: 1 })
-  return res.data.files?.[0]?.id ?? null
-}
 
-async function createFolder(drive: DriveClient, parentId: string, name: string): Promise<string> {
-  const res = await drive.files.create({
+  const existing = await drive.files.list({
+    q,
+    fields: 'files(id,name)',
+    pageSize: 1,
+    supportsAllDrives: true,
+    includeItemsFromAllDrives: true,
+    corpora: 'drive',
+    driveId: SHARED_DRIVE_ID,
+  })
+  const found = existing.data.files?.[0]?.id
+  if (found) return found
+
+  const created = await drive.files.create({
     requestBody: {
       name,
       mimeType: 'application/vnd.google-apps.folder',
       parents: [parentId],
     },
     fields: 'id',
+    supportsAllDrives: true,
   })
-  if (!res.data.id) throw new Error('Drive folder creation returned no id')
-  return res.data.id
+  if (!created.data.id) throw new Error('Drive folder creation returned no id')
+  return created.data.id
 }
 
-async function findOrCreateFolder(drive: DriveClient, parentId: string, name: string): Promise<string> {
-  const existing = await findFolder(drive, parentId, name)
-  if (existing) return existing
-  return createFolder(drive, parentId, name)
-}
-
-async function ensureCTDClientFolder(
+async function ensureCTDDateFolder(
   drive: DriveClient,
-  rootFolderId: string,
   clientName: string,
+  date: string,
 ): Promise<string> {
-  // CTD/{Client_Name}/ — dacă rootFolderId e deja folder „CTD", creăm doar subfolderul clientului.
-  // Dacă root este „root" / parent generic, creăm şi CTD dedesubt.
-  const ctdId = await findOrCreateFolder(drive, rootFolderId, 'CTD')
-  return findOrCreateFolder(drive, ctdId, clientName)
+  // Structura: {SHARED_DRIVE_ID}/CTD/{clientName}/{YYYY-MM-DD}/
+  const ctdId = await findOrCreateFolder(drive, SHARED_DRIVE_ID, 'CTD')
+  const clientId = await findOrCreateFolder(drive, ctdId, clientName)
+  return findOrCreateFolder(drive, clientId, date)
 }
 
 // ─── Router ──────────────────────────────────────────────────────────────────
 
 export function createGDriveRouter(): Router {
-  // Startup log: arată clar dacă Drive upload e ENABLED sau DISABLED.
-  const bootCreds = loadCreds()
-  if (bootCreds) {
-    const rootLabel = bootCreds.root_folder_id && bootCreds.root_folder_id !== 'root'
-      ? `folder:${bootCreds.root_folder_id.slice(0, 8)}…`
-      : 'My Drive root'
-    console.log(`[gdrive] ENABLED — client_id=${bootCreds.client_id.slice(0, 16)}… root=${rootLabel}`)
+  if (SHARED_DRIVE_ID) {
+    console.log(
+      `[gdrive] ENABLED — ADC + Shared Drive ${SHARED_DRIVE_ID.slice(0, 10)}…`,
+    )
   } else {
-    console.log('[gdrive] DISABLED — credentials missing (status endpoint → configured:false, upload → 503)')
+    console.log('[gdrive] DISABLED — GDRIVE_SHARED_DRIVE_ID not set (status → 503)')
   }
 
   const router = Router()
 
   router.get('/status', (_req, res) => {
-    const creds = loadCreds()
     res.json({
-      configured: creds !== null,
-      hasRootFolder: !!creds?.root_folder_id,
+      configured: !!SHARED_DRIVE_ID,
+      hasRootFolder: !!SHARED_DRIVE_ID,
+      mode: 'sa-adc-shared-drive',
     })
   })
 
   // POST /api/gdrive/upload
   // Body JSON: { clientName, fileName, mimeType, contentBase64 }
+  // Returns: { fileId, link, folderId }
   router.post('/upload', async (req, res) => {
-    const creds = loadCreds()
-    if (!creds) {
-      return res.status(503).json({ error: 'GDrive not configured' })
+    if (!SHARED_DRIVE_ID) {
+      return res.status(503).json({ error: 'GDRIVE_SHARED_DRIVE_ID not set' })
     }
     const { clientName, fileName, mimeType, contentBase64 } = req.body ?? {}
-    if (typeof clientName !== 'string' || typeof fileName !== 'string'
-        || typeof mimeType !== 'string' || typeof contentBase64 !== 'string') {
-      return res.status(400).json({ error: 'Missing or invalid fields: clientName, fileName, mimeType, contentBase64' })
+    if (
+      typeof clientName !== 'string' ||
+      typeof fileName !== 'string' ||
+      typeof mimeType !== 'string' ||
+      typeof contentBase64 !== 'string'
+    ) {
+      return res.status(400).json({
+        error:
+          'Missing or invalid fields: clientName, fileName, mimeType, contentBase64',
+      })
     }
 
     try {
-      const drive = buildDriveClient(creds)
-      const rootId = creds.root_folder_id ?? 'root'
-      const clientFolderId = await ensureCTDClientFolder(drive, rootId, clientName)
+      const drive = await getDriveClient()
+      const date = new Date().toISOString().slice(0, 10)
+      const folderId = await ensureCTDDateFolder(drive, clientName, date)
 
       const buffer = Buffer.from(contentBase64, 'base64')
       const stream = Readable.from(buffer)
 
       const created = await drive.files.create({
-        requestBody: { name: fileName, parents: [clientFolderId] },
+        requestBody: { name: fileName, parents: [folderId] },
         media: { mimeType, body: stream },
-        fields: 'id, webViewLink, webContentLink',
+        fields: 'id, webViewLink',
+        supportsAllDrives: true,
       })
       const fileId = created.data.id
       if (!fileId) throw new Error('Drive upload returned no file id')
 
       return res.json({
         fileId,
-        link: created.data.webViewLink ?? `https://drive.google.com/file/d/${fileId}/view`,
-        folderId: clientFolderId,
+        link:
+          created.data.webViewLink ??
+          `https://drive.google.com/file/d/${fileId}/view`,
+        folderId,
       })
     } catch (err) {
-      console.error('[gdrive] upload failed', err)
-      return res.status(500).json({ error: err instanceof Error ? err.message : 'upload failed' })
+      const msg = err instanceof Error ? err.message : 'upload failed'
+      console.error('[gdrive] upload failed:', msg)
+      return res.status(500).json({ error: msg })
     }
   })
 
