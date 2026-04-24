@@ -1,3 +1,44 @@
+# DEPLOY_REPORT — CLOUDRUN-CTD-001
+
+## TE-24 UX-GDRIVE-ONLY-001 — simplificare UX single button "Descarcă din Drive" (2026-04-24)
+
+Post-TE-21 GDRIVE-SA-SHAREDDRIVE-001. Decizie CEO: rapoartele CTD sunt artefacte arhivate în Shared Drive ACDA CTD Rapoarte — consultanții au acces direct, download local + upload manual redundante.
+
+### Schimbări UI
+- `src/pages/Cockpit/pages/11_PreviewRaport.tsx` — refactor complet: eliminate butoanele `Exportă Raport PDF` + `Uploadează în Drive`. Înlocuite cu state machine `idle → uploading → ready/error`:
+  - `idle/uploading`: disabled spinner `⏳ Se pregătește...`
+  - `ready`: primary albastru `🔵 Descarcă din Drive` (link `webViewLink`) + caption `Ultima versiune: {timestamp}`
+  - `error`: fallback `⬇️ Descarcă PDF (local)` via `PDFExportService.download` + toast roșu auto-dismiss 6s
+- Auto-upload pe mount via `useEffect` cu `useRef(uploadTriggered)` anti-duplicate (single-shot per mount).
+- Păstrate intacte linkurile `⚡ Diagnostic 90s`, `🎯 Strategie 10min`, `🤖 AI Readiness` — sunt deliverable-uri separate, nu raportul consolidat.
+
+### Schimbări backend
+- `server/gdrive.ts` — adaugă `findFileInFolder(drive, folderId, fileName)` + idempotency check în `POST /api/gdrive/upload`. Dacă fișier cu același nume există în folder-ul datei curente → return URL existing (skip upload). Response include `alreadyExisted: boolean` + `uploadedAt: ISO`.
+- `src/services/gdrive/GDriveUploadService.ts` — extend `GDriveUploadResult` cu `alreadyExisted?` + `uploadedAt?` optionale.
+
+### Deploy
+
+| Item | Valoare |
+|---|---|
+| Revision deploy | `ctd-00020-n62` |
+| Traffic | 100% → `ctd-00020-n62` |
+| Tag | `v0.2.1-ux-auto-upload` |
+| Service account | `ctd-runner@acda-os-sso.iam.gserviceaccount.com` (neschimbat) |
+| Env/secrets (additive) | păstrate identice cu ctd-00019 |
+| Build | Vite 6.4.1 + tsc clean, 341 modules, dist 1.19 MB (gzip 442 kB) |
+| Smoke test `/` | HTTP 200 @ 0.21s |
+| Browser smoke (login ctd.acda.cloud + client + PreviewRaport) | PENDING — manual CEO validation |
+
+### Decizii TE-24
+- Idempotency pe nume fișier (nu conținut hash) — pragmatic pentru same-day context (client, date fix).
+- Re-upload cu nume timestampizat (pe same-day re-generate) — out of scope v0.2.1 (no trigger UI în PreviewRaport); acceptabil să vadă "ultima versiune încărcată" până la altă zi.
+- Previzualizare PDF in-app eliminată — Drive oferă preview nativ integrat pentru PDF.
+- Upload bundle (PDF + JSON) rămâne dual — UI reflectă doar linkul PDF-ului (principal).
+
+Tag: `v0.2.1-ux-auto-upload`.
+
+---
+
 # DEPLOY_REPORT — CLOUDRUN-CTD-001 (v0.2.0-cloudsql LIVE)
 
 > Raport execuție TE-14 CLOUDRUN-CTD-001 (Cloud Run + Cloud SQL unix socket).
