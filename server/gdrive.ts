@@ -84,6 +84,35 @@ async function ensureCTDDateFolder(
   return findOrCreateFolder(drive, clientId, date)
 }
 
+async function findFileInFolder(
+  drive: DriveClient,
+  folderId: string,
+  fileName: string,
+): Promise<{ id: string; webViewLink?: string | null; createdTime?: string | null } | null> {
+  const escaped = fileName.replace(/'/g, "\\'")
+  const q = [
+    `'${folderId}' in parents`,
+    `name = '${escaped}'`,
+    `trashed = false`,
+  ].join(' and ')
+  const res = await drive.files.list({
+    q,
+    fields: 'files(id,name,webViewLink,createdTime)',
+    pageSize: 1,
+    supportsAllDrives: true,
+    includeItemsFromAllDrives: true,
+    corpora: 'drive',
+    driveId: SHARED_DRIVE_ID,
+  })
+  const found = res.data.files?.[0]
+  if (!found?.id) return null
+  return {
+    id: found.id,
+    webViewLink: found.webViewLink,
+    createdTime: found.createdTime,
+  }
+}
+
 // ─── Router ──────────────────────────────────────────────────────────────────
 
 export function createGDriveRouter(): Router {
@@ -130,13 +159,28 @@ export function createGDriveRouter(): Router {
       const date = new Date().toISOString().slice(0, 10)
       const folderId = await ensureCTDDateFolder(drive, clientName, date)
 
+      // Idempotency: dacă fișier cu același nume există deja în folder-ul
+      // zilei, return URL-ul existing. Evită duplicate la auto-upload pe mount.
+      const existing = await findFileInFolder(drive, folderId, fileName)
+      if (existing) {
+        return res.json({
+          fileId: existing.id,
+          link:
+            existing.webViewLink ??
+            `https://drive.google.com/file/d/${existing.id}/view`,
+          folderId,
+          alreadyExisted: true,
+          uploadedAt: existing.createdTime ?? new Date().toISOString(),
+        })
+      }
+
       const buffer = Buffer.from(contentBase64, 'base64')
       const stream = Readable.from(buffer)
 
       const created = await drive.files.create({
         requestBody: { name: fileName, parents: [folderId] },
         media: { mimeType, body: stream },
-        fields: 'id, webViewLink',
+        fields: 'id, webViewLink, createdTime',
         supportsAllDrives: true,
       })
       const fileId = created.data.id
@@ -148,6 +192,8 @@ export function createGDriveRouter(): Router {
           created.data.webViewLink ??
           `https://drive.google.com/file/d/${fileId}/view`,
         folderId,
+        alreadyExisted: false,
+        uploadedAt: created.data.createdTime ?? new Date().toISOString(),
       })
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'upload failed'
