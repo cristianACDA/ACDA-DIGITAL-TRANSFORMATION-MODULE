@@ -1,15 +1,16 @@
 import { describe, it, expect } from "vitest";
-import type { IndicatorID } from "../../contracts/agent-contracts";
 import { mockCTDOutput } from "../../mocks/mock-cloudserve";
 import { ARCH_KEYS } from "./arch-definitions";
 import {
   mapSetulAToArchitectures,
   clasificaNivel,
+  normalizeIndicator,
   SETUL_A_TO_ARCH,
+  SETUL_A_KEYS,
   type IndicatorScores,
 } from "./arch-mapping";
 
-/** Extrage scorurile indicatorilor dintr-un AgentCTDOutput (folosit ca input mapping). */
+/** Extrage scorurile indicatorilor dintr-un AgentCTDOutput (chei lungi: S1_focusul_ebit). */
 function scoresFromSeed(): IndicatorScores {
   const out: IndicatorScores = {};
   for (const ind of mockCTDOutput.indicatori) out[ind.id] = ind.scor;
@@ -45,11 +46,19 @@ describe("mapSetulAToArchitectures — seed CloudServe (regresie)", () => {
     expect(result.filter((r) => r.nivel === "NECONFORM")).toHaveLength(5);
   });
 
-  it("trasează corect indicatorii contribuitori (explainability)", () => {
+  it("trasează corect indicatorii contribuitori (explainability, chei scurte)", () => {
     const arch4 = result.find((r) => r.key === "arch_4");
-    expect(arch4?.contribuitori.sort()).toEqual(
-      ["O1_regula_1_1", "O2_densitatea_talentului", "O3_riscul_instruire"].sort(),
-    );
+    expect(arch4?.contribuitori.slice().sort()).toEqual(["O1", "O2", "O3"]);
+  });
+});
+
+describe("mapSetulAToArchitectures — bridge forme de cod", () => {
+  it("dă același rezultat pentru chei scurte (cockpit) și chei lungi (seed)", () => {
+    const scurt = mapSetulAToArchitectures({
+      S1: 1.0, S2: 1.0, S3: 0.5, T1: 2.0, T2: 3.0, T3: 1.5, O1: 1.5, O2: 3.5, O3: 2.0,
+    });
+    const lung = mapSetulAToArchitectures(scoresFromSeed());
+    expect(scurt.map((r) => r.scor)).toEqual(lung.map((r) => r.scor));
   });
 });
 
@@ -65,7 +74,20 @@ describe("mapSetulAToArchitectures — robustețe", () => {
     const r = mapSetulAToArchitectures({ O2_densitatea_talentului: 4.0 });
     const arch4 = r.find((x) => x.key === "arch_4");
     expect(arch4?.scor).toBe(4.0);
-    expect(arch4?.contribuitori).toEqual(["O2_densitatea_talentului"]);
+    expect(arch4?.contribuitori).toEqual(["O2"]);
+  });
+});
+
+describe("normalizeIndicator", () => {
+  it("acceptă forma scurtă și lungă, case-insensitive", () => {
+    expect(normalizeIndicator("S1")).toBe("S1");
+    expect(normalizeIndicator("S1_focusul_ebit")).toBe("S1");
+    expect(normalizeIndicator("o3_riscul_instruire")).toBe("O3");
+    expect(normalizeIndicator(" T2 ")).toBe("T2");
+  });
+  it("întoarce null pentru coduri necunoscute", () => {
+    expect(normalizeIndicator("X9")).toBeNull();
+    expect(normalizeIndicator("")).toBeNull();
   });
 });
 
@@ -85,21 +107,9 @@ describe("clasificaNivel — praguri canonice D3", () => {
 });
 
 describe("SETUL_A_TO_ARCH — integritate mapping", () => {
-  it("acoperă toți cei 9 indicatori ai Setului A", () => {
-    expect(Object.keys(SETUL_A_TO_ARCH).sort()).toEqual(
-      (
-        [
-          "O1_regula_1_1",
-          "O2_densitatea_talentului",
-          "O3_riscul_instruire",
-          "S1_focusul_ebit",
-          "S2_validarea_capstone",
-          "S3_trustworthy_ai",
-          "T1_data_products",
-          "T2_api_first",
-          "T3_assetizare",
-        ] as IndicatorID[]
-      ).sort(),
+  it("acoperă toți cei 9 indicatori ai Setului A (chei scurte)", () => {
+    expect(Object.keys(SETUL_A_TO_ARCH).slice().sort()).toEqual(
+      [...SETUL_A_KEYS].sort(),
     );
   });
 

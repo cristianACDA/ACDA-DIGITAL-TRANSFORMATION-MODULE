@@ -6,11 +6,13 @@
 export type { ArchKey, ArchDefinition } from "./arch-definitions";
 export { ARCH_KEYS, ARCH_DEFINITIONS } from "./arch-definitions";
 
-export type { ArchScore, IndicatorScores } from "./arch-mapping";
+export type { ArchScore, IndicatorScores, SetulAKey } from "./arch-mapping";
 export {
   SETUL_A_TO_ARCH,
+  SETUL_A_KEYS,
   mapSetulAToArchitectures,
   clasificaNivel,
+  normalizeIndicator,
 } from "./arch-mapping";
 
 export type { ArchNarrative, ArchNarratives } from "./arch-narratives";

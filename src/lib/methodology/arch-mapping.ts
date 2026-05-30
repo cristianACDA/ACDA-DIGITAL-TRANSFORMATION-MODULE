@@ -3,33 +3,36 @@
  *
  * Sursă: BRIEF Redesign v2.0 §2 (tabel canonic SETUL_A_TO_ARCH).
  *
- * NOTĂ de aliniere la cod (verificat în `agent-contracts.ts`, commit fcc1c9a):
- * brief-ul folosește chei scurte (S1, T1, O1…); tipul real al indicatorilor este
- * `IndicatorID` cu coduri lungi (`S1_focusul_ebit`…). Mapping-ul de mai jos este
- * cheiat direct pe `IndicatorID` real, ca să nu existe traducere fragilă la runtime.
+ * NOTĂ de aliniere la cod (verificat în commit fcc1c9a): în repo coexistă DOUĂ forme
+ * de cod pentru indicatori — forma scurtă `S1`/`T1`/`O1` (`IndicatorCode` din
+ * `acda.types.ts`, folosită de cockpit/context) și forma lungă `S1_focusul_ebit`
+ * (`IndicatorID` din `agent-contracts.ts`, folosită în seed/contract agenți).
+ * Mapping-ul e cheiat pe forma SCURTĂ (ca în brief), iar {@link normalizeIndicator}
+ * acceptă ambele forme la input, ca să nu existe traducere fragilă la apelant.
  */
 
-import type { IndicatorID } from "../../contracts/agent-contracts";
 import { PRAGURI_MATURITATE, type NivelMaturitate } from "../../contracts/agent-contracts";
 import { ARCH_KEYS, type ArchKey } from "./arch-definitions";
 
+/** Cheile scurte ale celor 9 indicatori ai Setului A v1.1. */
+export type SetulAKey =
+  | "S1" | "S2" | "S3"
+  | "T1" | "T2" | "T3"
+  | "O1" | "O2" | "O3";
+
+/** Cele 9 chei, în ordine canonică (S → T → O). */
+export const SETUL_A_KEYS: readonly SetulAKey[] = [
+  "S1", "S2", "S3", "T1", "T2", "T3", "O1", "O2", "O3",
+] as const;
+
 /**
  * Pentru fiecare indicator din Setul A, arhitecturile pe care le alimentează.
- * (Echivalentul brief §2, tradus pe `IndicatorID` real.)
+ * (Identic cu tabelul din BRIEF §2.)
  */
-export const SETUL_A_TO_ARCH: Record<IndicatorID, ArchKey[]> = {
-  // Strategie & ROI
-  S1_focusul_ebit: ["arch_5", "arch_2"],
-  S2_validarea_capstone: ["arch_5"],
-  S3_trustworthy_ai: ["arch_3"],
-  // Tehnologie & Date
-  T1_data_products: ["arch_1", "arch_6"],
-  T2_api_first: ["arch_3", "arch_1"],
-  T3_assetizare: ["arch_2", "arch_6"],
-  // Oameni & Adopție
-  O1_regula_1_1: ["arch_4"],
-  O2_densitatea_talentului: ["arch_4"],
-  O3_riscul_instruire: ["arch_4", "arch_6"],
+export const SETUL_A_TO_ARCH: Record<SetulAKey, ArchKey[]> = {
+  S1: ["arch_5", "arch_2"], T1: ["arch_1", "arch_6"], O1: ["arch_4"],
+  S2: ["arch_5"],           T2: ["arch_3", "arch_1"], O2: ["arch_4"],
+  S3: ["arch_3"],           T3: ["arch_2", "arch_6"], O3: ["arch_4", "arch_6"],
 };
 
 /** Scor calculat pentru o arhitectură, cu trasabilitate la indicatorii-sursă. */
@@ -39,55 +42,70 @@ export interface ArchScore {
   scor: number;
   /** Clasificarea pe pragurile canonice (D3 / D-CTD-01). */
   nivel: NivelMaturitate;
-  /** Indicatorii care au contribuit la acest scor (trasabilitate / explainability). */
-  contribuitori: IndicatorID[];
+  /** Indicatorii (chei scurte) care au contribuit la acest scor. */
+  contribuitori: SetulAKey[];
 }
 
-/** Input minimal pentru mapping: scorul fiecărui indicator din Setul A. */
-export type IndicatorScores = Partial<Record<IndicatorID, number>>;
+/** Input mapping: scorul fiecărui indicator. Cheile pot fi în forma scurtă sau lungă. */
+export type IndicatorScores = Record<string, number>;
+
+/**
+ * Normalizează un cod de indicator la forma scurtă canonică.
+ * Acceptă `S1` sau `S1_focusul_ebit` (case-insensitive) → `"S1"`.
+ * @returns cheia scurtă validă, sau `null` dacă nu e un indicator cunoscut.
+ */
+export function normalizeIndicator(code: string): SetulAKey | null {
+  const prefix = code.trim().toUpperCase().split("_")[0];
+  return (SETUL_A_KEYS as readonly string[]).includes(prefix)
+    ? (prefix as SetulAKey)
+    : null;
+}
 
 /**
  * Clasifică un scor 0–5 pe pragurile canonice de maturitate.
  * @param scor Scorul mediu al arhitecturii.
- * @returns Nivelul de maturitate corespunzător.
  */
 export function clasificaNivel(scor: number): NivelMaturitate {
-  // Praguri din agent-contracts.ts; banda finală (LIDER) prinde marginea superioară.
   const prag = PRAGURI_MATURITATE.find((p) => scor >= p.min && scor <= p.max);
   return prag ? prag.nivel : "NECONFORM";
 }
 
-/**
- * Construiește maparea inversă arhitectură → indicatori contribuitori.
- * Calculată din {@link SETUL_A_TO_ARCH}; nu se ține o a doua sursă de adevăr.
- */
-function buildInverseMap(): Record<ArchKey, IndicatorID[]> {
-  const inverse = {} as Record<ArchKey, IndicatorID[]>;
+/** Mapare inversă arhitectură → indicatori contribuitori, derivată din SETUL_A_TO_ARCH. */
+function buildInverseMap(): Record<ArchKey, SetulAKey[]> {
+  const inverse = {} as Record<ArchKey, SetulAKey[]>;
   for (const key of ARCH_KEYS) inverse[key] = [];
-  for (const id of Object.keys(SETUL_A_TO_ARCH) as IndicatorID[]) {
+  for (const id of SETUL_A_KEYS) {
     for (const arch of SETUL_A_TO_ARCH[id]) inverse[arch].push(id);
   }
   return inverse;
 }
 
-const ARCH_TO_INDICATORS: Record<ArchKey, IndicatorID[]> = buildInverseMap();
+const ARCH_TO_INDICATORS: Record<ArchKey, SetulAKey[]> = buildInverseMap();
 
 /**
  * Transformă cei 9 indicatori ai Setului A în 6 scoruri de arhitectură.
  *
  * Agregare: media aritmetică a scorurilor indicatorilor mapați pe fiecare arhitectură
- * (un indicator poate contribui la mai multe arhitecturi). Indicatorii absenți din
- * input sunt ignorați; o arhitectură fără niciun indicator disponibil primește scor 0.
+ * (un indicator poate contribui la mai multe arhitecturi). Cheile de input se
+ * normalizează cu {@link normalizeIndicator}; indicatorii absenți sunt ignorați; o
+ * arhitectură fără niciun indicator disponibil primește scor 0.
  *
- * @param scores Scorurile indicatorilor (0–5). Lipsurile sunt tolerate.
+ * @param scores Scorurile indicatorilor (0–5), cheiate scurt sau lung.
  * @returns Cele 6 scoruri de arhitectură, în ordinea {@link ARCH_KEYS}.
  */
 export function mapSetulAToArchitectures(scores: IndicatorScores): ArchScore[] {
+  // Normalizează input-ul o singură dată (ultima valoare câștigă la duplicate).
+  const byKey: Partial<Record<SetulAKey, number>> = {};
+  for (const [rawCode, value] of Object.entries(scores)) {
+    const key = normalizeIndicator(rawCode);
+    if (key !== null && typeof value === "number") byKey[key] = value;
+  }
+
   return ARCH_KEYS.map((key) => {
     const contribuitori = ARCH_TO_INDICATORS[key].filter(
-      (id) => typeof scores[id] === "number",
+      (id) => typeof byKey[id] === "number",
     );
-    const suma = contribuitori.reduce((acc, id) => acc + (scores[id] as number), 0);
+    const suma = contribuitori.reduce((acc, id) => acc + (byKey[id] as number), 0);
     const medie = contribuitori.length > 0 ? suma / contribuitori.length : 0;
     const scor = Math.round(medie * 100) / 100;
     return { key, scor, nivel: clasificaNivel(scor), contribuitori };
