@@ -71,12 +71,15 @@ export function getPool(): Pool {
 
 // ─── Schema bootstrap ────────────────────────────────────────────────────────
 
-const SCHEMA_PATH = resolve(__dirname, 'migrations/001_ctd_schema.sql')
+// Migrări aplicate în ordine la bootstrap. Toate idempotente (CREATE/ALTER … IF NOT EXISTS).
+const MIGRATION_FILES = ['001_ctd_schema.sql', '011_frontier.sql'] as const
 
 async function applySchema(): Promise<void> {
-  const sql = readFileSync(SCHEMA_PATH, 'utf-8')
-  await getPool().query(sql)
-  console.log('[pg] schema 001_ctd_schema.sql applied (idempotent)')
+  for (const file of MIGRATION_FILES) {
+    const sql = readFileSync(resolve(__dirname, 'migrations', file), 'utf-8')
+    await getPool().query(sql)
+    console.log(`[pg] migration ${file} applied (idempotent)`)
+  }
 }
 
 // ─── Seed CloudServe SRL (idempotent) ────────────────────────────────────────
