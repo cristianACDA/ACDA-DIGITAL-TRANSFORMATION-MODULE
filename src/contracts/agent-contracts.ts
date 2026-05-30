@@ -296,21 +296,89 @@ export const PAGINI_COCKPIT = [
 
 export type StatusProiect =
   | "CIORNA"
+  | "RUTINA_FRONTIER"
   | "VALIDARE_CONSULTANT"
   | "ASTEAPTA_APROBARE"
   | "APROBAT"
   | "RESPINS"
   | "REVIEW_OPUS"
+  | "OFERTA_GENERATA"
   | "FINALIZAT"
   | "ARHIVAT";
 
 export const STATUS_PROIECT_META: Record<StatusProiect, { label: string; descriere: string; urmator: StatusProiect | null }> = {
-  CIORNA:               { label: "Ciorna",                       descriere: "Proiectul e in lucru. Consultantul valideaza cockpitul.",                      urmator: "VALIDARE_CONSULTANT" },
+  CIORNA:               { label: "Ciorna",                       descriere: "Proiectul e in lucru. Consultantul valideaza cockpitul.",                      urmator: "RUTINA_FRONTIER" },
+  RUTINA_FRONTIER:      { label: "Rutina Frontier (AI)",         descriere: "Ruleaza rutina automata Frontier (Opus). Verdict generat inainte de validarea consultantului.", urmator: "VALIDARE_CONSULTANT" },
   VALIDARE_CONSULTANT:  { label: "Asteapta validare consultant", descriere: "Cockpit complet. Consultantul verifica totul inainte de a trimite.",           urmator: "ASTEAPTA_APROBARE" },
   ASTEAPTA_APROBARE:    { label: "Asteapta aprobare Cristian",   descriere: "Trimis la Cristian pe Telegram. Aproba, ajusteaza sau respinge.",              urmator: "APROBAT" },
   APROBAT:              { label: "Aprobat",                      descriere: "Cristian a aprobat. Merge la review automat Claude Opus.",                     urmator: "REVIEW_OPUS" },
   RESPINS:              { label: "Respins",                      descriere: "Cristian a respins. Se intoarce la consultant pentru corectii.",               urmator: "CIORNA" },
-  REVIEW_OPUS:          { label: "In verificare AI",             descriere: "Claude Opus verifica coerenta narativelor, consistenta datelor, tonul.",       urmator: "FINALIZAT" },
+  REVIEW_OPUS:          { label: "In verificare AI",             descriere: "Claude Opus verifica coerenta narativelor, consistenta datelor, tonul.",       urmator: "OFERTA_GENERATA" },
+  OFERTA_GENERATA:      { label: "Oferta generata",              descriere: "Oferta generata pe baza diagnosticului aprobat. Urmeaza finalizarea livrabilului.", urmator: "FINALIZAT" },
   FINALIZAT:            { label: "Finalizat",                    descriere: "Raport generat, PDF creat, urcat in Drive. Gata de livrat clientului.",        urmator: "ARHIVAT" },
   ARHIVAT:              { label: "Arhivat",                      descriere: "Proiect incheiat. Date pastrate pentru referinta si benchmark.",               urmator: null },
 };
+
+// ── VERDICT FRONTIER + TRANZIȚII ─────────────────────────
+
+/** Verdictul rutinei Frontier / al override-ului admin. */
+export type Verdict = "PASS" | "WARN" | "FAIL";
+
+/** Câmpurile de verdict de pe un proiect (subset din coloanele migrării 011). */
+export interface VerdictCarrier {
+  verdict?: Verdict | null;
+  /** Override admin — are prioritate absolută cât timp e setat (non-null). */
+  verdict_override?: Verdict | null;
+}
+
+/**
+ * Verdictul efectiv: override-ul admin dacă e setat, altfel verdictul rutinei.
+ * @returns Verdict efectiv, sau null dacă nu există niciunul.
+ */
+export function effectiveVerdict(project: VerdictCarrier): Verdict | null {
+  return project.verdict_override ?? project.verdict ?? null;
+}
+
+/**
+ * Tranzițiile permise între statusuri (happy-path + ramuri laterale).
+ * Poarta de verdict pe RUTINA_FRONTIER e aplicată suplimentar în isValidTransition.
+ */
+const TRANZITII_PERMISE: Record<StatusProiect, StatusProiect[]> = {
+  CIORNA:              ["RUTINA_FRONTIER"],
+  RUTINA_FRONTIER:     ["VALIDARE_CONSULTANT", "RESPINS"], // gated by effectiveVerdict
+  VALIDARE_CONSULTANT: ["ASTEAPTA_APROBARE"],
+  ASTEAPTA_APROBARE:   ["APROBAT", "RESPINS"],
+  APROBAT:             ["REVIEW_OPUS"],
+  REVIEW_OPUS:         ["OFERTA_GENERATA"],
+  OFERTA_GENERATA:     ["FINALIZAT"],
+  FINALIZAT:           ["ARHIVAT"],
+  ARHIVAT:             [],
+  RESPINS:             ["CIORNA"],
+};
+
+/**
+ * Validează o tranziție de status.
+ *
+ * Regula-cheie (frontier): din RUTINA_FRONTIER se poate avansa la VALIDARE_CONSULTANT
+ * DOAR dacă effectiveVerdict ∈ {PASS, WARN}; dacă verdictul efectiv e FAIL, singura
+ * tranziție permisă e către RESPINS. Cât timp nu există verdict (null), nu se poate
+ * părăsi RUTINA_FRONTIER.
+ *
+ * @param from Statusul curent.
+ * @param to Statusul țintă.
+ * @param project Câmpurile de verdict (necesare doar pentru poarta RUTINA_FRONTIER).
+ */
+export function isValidTransition(
+  from: StatusProiect,
+  to: StatusProiect,
+  project?: VerdictCarrier,
+): boolean {
+  if (!TRANZITII_PERMISE[from].includes(to)) return false;
+
+  if (from === "RUTINA_FRONTIER") {
+    const v = effectiveVerdict(project ?? {});
+    if (to === "VALIDARE_CONSULTANT") return v === "PASS" || v === "WARN";
+    if (to === "RESPINS") return v === "FAIL";
+  }
+  return true;
+}
