@@ -10,6 +10,8 @@ import {
   getMaturityLevel,
 } from '../../utils/maturityCalculator'
 import { mockCTDOutput } from '../../mocks/mock-cloudserve'
+import { computeCostOfInaction } from '../../lib/methodology/cost-of-inaction'
+import type { ProblemStatement } from '../../types/acda.types'
 import {
   exportStrategy10minPDF,
   type Milestone,
@@ -18,12 +20,13 @@ import {
 
 const MS_FORMAT = (v: number) => v.toLocaleString('ro-RO', { maximumFractionDigits: 0 })
 
-function pickTopProbleme(): { titlu: string; impact: number | null }[] {
-  return mockCTDOutput.probleme
+/** Top 3 probleme (titlu + impact) din contextul live, sortate descrescător. */
+function pickTopProbleme(problems: ProblemStatement[]): { titlu: string; impact: number | null }[] {
+  return problems
     .slice()
-    .sort((a, b) => (b.impact_financiar ?? 0) - (a.impact_financiar ?? 0))
+    .sort((a, b) => (b.financial_impact ?? 0) - (a.financial_impact ?? 0))
     .slice(0, 3)
-    .map((p) => ({ titlu: p.titlu, impact: p.impact_financiar }))
+    .map((p) => ({ titlu: p.title, impact: p.financial_impact ?? null }))
 }
 
 function pickTopOportunitati(): { titlu: string; impact: number; efort: string }[] {
@@ -35,7 +38,7 @@ function pickTopOportunitati(): { titlu: string; impact: number; efort: string }
 }
 
 export default function Strategy10min() {
-  const { maturityIndicators, ebitBaseline, client, activeProjectId } = useProjectContext()
+  const { maturityIndicators, ebitBaseline, client, activeProjectId, processes, problemStatements } = useProjectContext()
   const [exporting, setExporting] = useState(false)
 
   const data = useMemo(() => {
@@ -55,8 +58,9 @@ export default function Strategy10min() {
     const ebitTarget: number = ebitBaseline?.ebit_target ?? mockCTDOutput.date_financiare.ebit_target ?? 0
     const deltaEbit = ebitTarget - ebitCurrent
 
-    const probleme = pickTopProbleme()
-    const pierderiAnuale = probleme.reduce((s, p) => s + (p.impact ?? 0), 0)
+    const probleme = pickTopProbleme(problemStatements)
+    // Cost of Inaction — funcție canonică unică (înlocuiește vechiul `pierderiAnuale`).
+    const coi = computeCostOfInaction(processes, problemStatements)
 
     const oportunitati = pickTopOportunitati()
     const clientName = client?.company_name ?? mockCTDOutput.denumire
@@ -71,9 +75,9 @@ export default function Strategy10min() {
       deltaEbit,
       probleme,
       oportunitati,
-      pierderiAnuale,
+      coi,
     }
-  }, [maturityIndicators, ebitBaseline, client])
+  }, [maturityIndicators, ebitBaseline, client, processes, problemStatements])
 
   const capitol1 = `Compania se află astăzi la un scor de maturitate ACDA de ${data.globalScore.toFixed(2)} din 5.00, încadrată la nivelul ${data.level}. Diagnosticul pe cele trei arii arată o imagine clară: Oameni & Adopţie ${data.areaScores.oameni.toFixed(1)}, Tehnologie & Date ${data.areaScores.tehnologie.toFixed(1)}, Strategie & ROI ${data.areaScores.strategie.toFixed(1)}.
 
@@ -81,11 +85,13 @@ Diferenţa dintre aceste scoruri nu este cosmetică — ea reflectă dezechilibr
 
 Plecând de la această poziţie, obiectivul strategiei este să ridice compania peste pragul CONFORM în următoarele 12 luni, cu paşi calibraţi pe ceea ce este deja funcţional şi pe ceea ce trebuie deblocat cu prioritate.`
 
-  const capitol2 = `Inacţiunea are un cost cuantificabil. EBIT-ul curent este ${MS_FORMAT(data.ebitCurrent)} RON, iar ţinta realistă este ${MS_FORMAT(data.ebitTarget)} RON — un delta de ${MS_FORMAT(data.deltaEbit)} RON pe care organizaţia îl lasă pe masă în fiecare an în care nu acţionează.
+  const capitol2 = data.coi.status === 'empty'
+    ? `Costul inacţiunii se cuantifică din costurile ascunse ale proceselor (pag. 4) şi impactul financiar al problemelor (pag. 5). ${data.coi.mesajGol}`
+    : `Inacţiunea are un cost cuantificabil. Costurile ascunse identificate — costuri operaţionale ale proceselor şi impactul financiar al problemelor — însumează o bază de ${MS_FORMAT(data.coi.baza)} RON pe an.
 
 Trei riscuri majore erodează deja performanţa. Primul: ${data.probleme[0]?.titlu ?? '—'}${data.probleme[0]?.impact != null ? ` (impact anual estimat ${MS_FORMAT(data.probleme[0].impact as number)} RON)` : ''}. Al doilea: ${data.probleme[1]?.titlu ?? '—'}${data.probleme[1]?.impact != null ? ` (${MS_FORMAT(data.probleme[1].impact as number)} RON)` : ''}. Al treilea: ${data.probleme[2]?.titlu ?? '—'}${data.probleme[2]?.impact != null ? ` (${MS_FORMAT(data.probleme[2].impact as number)} RON)` : ''}.
 
-Cumulat, aceste pierderi reprezintă aproximativ ${MS_FORMAT(data.pierderiAnuale)} RON erodare EBIT anual. Proiectate pe 12 luni de status-quo, rezultatul este dublu: marjă comprimată şi poziţie competitivă slăbită faţă de jucătorii care au început deja transformarea.`
+Proiectat pe ${data.coi.ipoteze.orizontAni} ani de status-quo (cu o erodare de ${Math.round((data.coi.ipoteze.erodareAn2 - 1) * 100)}% în An 2), pierderea cumulată ajunge la ${MS_FORMAT(data.coi.faraActiune.total)} RON. Cu transformarea ACDA, se recuperează ${MS_FORMAT(data.coi.cuTransformareACDA.totalRecuperat)} RON din acest cost, lăsând o expunere reziduală de doar ${MS_FORMAT(data.coi.cuTransformareACDA.totalRamas)} RON. ${data.coi.disclaimer}`
 
   const pillars: StrategyPillarOut[] = data.oportunitati.map((o, idx) => ({
     titlu: `Pilon ${idx + 1}: ${o.titlu}`,
@@ -182,10 +188,27 @@ Cumulat, aceste pierderi reprezintă aproximativ ${MS_FORMAT(data.pierderiAnuale
 
       {/* Capitolul 2 */}
       <Chapter num={2} title="Costul inacţiunii" text={capitol2} highlight={
-        <div className="bg-[color:rgba(245,158,11,0.08)] border border-border-subtle rounded-lg p-3 text-sm">
-          <strong className="text-accent-warning">Pierderi estimate pe 12 luni: {MS_FORMAT(data.pierderiAnuale)} RON</strong>
-          <span className="text-[color:var(--color-text-body)]/70"> · Delta EBIT lăsat pe masă: {MS_FORMAT(data.deltaEbit)} RON</span>
-        </div>
+        data.coi.status === 'empty' ? (
+          <div className="bg-[color:var(--color-page)] border border-dashed border-[color:var(--color-border-subtle)] rounded-lg p-3 text-sm text-[color:var(--color-text-body)]/60">
+            {data.coi.mesajGol}
+          </div>
+        ) : (
+          <div className="flex flex-col gap-2">
+            <div className="grid gap-2 md:grid-cols-2">
+              <div className="bg-[color:rgba(220,38,38,0.06)] border border-border-subtle rounded-lg p-3 text-sm">
+                <p className="text-[10px] uppercase tracking-wider font-semibold text-[#dc2626]/80">Fără acţiune · {data.coi.ipoteze.orizontAni} ani</p>
+                <strong className="text-[#b91c1c] text-base">{MS_FORMAT(data.coi.faraActiune.total)} RON</strong>
+                <p className="text-[11px] text-[color:var(--color-text-body)]/60">pierdere cumulată (An1 {MS_FORMAT(data.coi.faraActiune.an1)} + An2 {MS_FORMAT(data.coi.faraActiune.an2)})</p>
+              </div>
+              <div className="bg-[color:rgba(34,197,94,0.06)] border border-border-subtle rounded-lg p-3 text-sm">
+                <p className="text-[10px] uppercase tracking-wider font-semibold text-accent-success/80">Cu transformare ACDA · {data.coi.ipoteze.orizontAni} ani</p>
+                <strong className="text-accent-success text-base">−{MS_FORMAT(data.coi.cuTransformareACDA.totalRecuperat)} RON recuperat</strong>
+                <p className="text-[11px] text-[color:var(--color-text-body)]/60">expunere reziduală {MS_FORMAT(data.coi.cuTransformareACDA.totalRamas)} RON</p>
+              </div>
+            </div>
+            <p className="text-[10px] text-[color:var(--color-text-body)]/40 italic">{data.coi.disclaimer}</p>
+          </div>
+        )
       } />
 
       {/* Capitolul 3 */}
